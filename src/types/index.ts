@@ -1,6 +1,6 @@
 export type GPUBrand = 'NVIDIA' | 'AMD' | 'Intel';
 
-export type PowerConnectorType = '12VHPWR' | '12V-2x6' | '1x 8-pin' | '2x 8-pin' | '3x 8-pin';
+export type PowerConnectorType = '16-pin (12VHPWR)' | '16-pin' | '12VHPWR' | '12V-2x6' | '1x 8-pin' | '2x 8-pin' | '3x 8-pin' | string;
 
 export interface GPUSpec {
   id: string;
@@ -18,8 +18,9 @@ export interface GPUSpec {
   busWidth: string;      // e.g. "384-bit"
   bandwidth: string;     // e.g. "1008GB/s"
   boostClock: string;    // e.g. "2520MHz"
-  tdpWatts: string;      // e.g. "450 W"
+  tdpWatts: string;      // e.g. "450W"
   busInterface: string;  // e.g. "PCIe 4.0 x16"
+  displayOutputs: string; // e.g. "3x DP 1.4a, 1x HDMI 2.1a"
 
   // Benchmark Performance
   timeSpyScore: number;  // 3DMark TimeSpy Graphics Score (pts)

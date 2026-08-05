@@ -136,7 +136,7 @@ export const INITIAL_CASES: CaseSpec[] = [
     supportsVerticalMount: true,
     supportsFrontRadiator: true,
     maxCpuCoolerHeightMm: 165,
-    notes: 'Dual-chamber glass tower with massive headroom for 12VHPWR cables and long GPUs.'
+    notes: 'Dual-chamber glass tower with massive headroom for 16-pin (12VHPWR) cables and long GPUs.'
   },
   {
     id: 'hyte-y70',

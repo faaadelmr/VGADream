@@ -7,6 +7,7 @@ import { CaseSpec, GPUSpec } from '@/types';
 import { evaluateClearance } from '@/utils/clearanceCalculator';
 
 import { Navbar } from '@/components/Navbar';
+import { Footer } from '@/components/Footer';
 import { GPUFitVisualizer } from '@/components/GPUFitVisualizer';
 import { GPUCard } from '@/components/GPUCard';
 import { GPUTableList } from '@/components/GPUTableList';
@@ -16,13 +17,13 @@ import { GPUCompareModal } from '@/components/GPUCompareModal';
 export default function Home() {
   // 1. Core State
   const [activeCase, setActiveCase] = useState<CaseSpec>(INITIAL_CASES[0]); // Fractal Terra
-  const [userPsuWattage, setUserPsuWattage] = useState<number>(750); // Kapasitas PSU Pengguna (default 750W)
+  const [userPsuWattage, setUserPsuWattage] = useState<number>(750); // Default 750W PSU
 
-  // 2. Blueprint Visualizer visibility toggle & selected GPU
+  // 2. Visualizer visibility toggle & selected GPU (Default RTX 4070 Super Founders Edition)
   const [showVisualizer, setShowVisualizer] = useState(false);
   const [visualizerGpu, setVisualizerGpu] = useState<GPUSpec>(INITIAL_GPUS[0]);
 
-  // View Mode: 'table' (default) or 'grid'
+  // View Layout Mode: 'table' (default) or 'grid'
   const [viewLayout, setViewLayout] = useState<'table' | 'grid'>('table');
 
   // 3. Filter States
@@ -34,7 +35,7 @@ export default function Home() {
   const [maxLengthFilter, setMaxLengthFilter] = useState(360);
   const [maxSlotFilter, setMaxSlotFilter] = useState(4.0);
   const [selectedManufacturers, setSelectedManufacturers] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState<'fit_score' | 'time_spy_desc' | 'length_asc' | 'length_desc'>('fit_score');
+  const [sortBy, setSortBy] = useState<'fit_score' | 'vram_desc' | 'time_spy_desc' | 'length_asc' | 'length_desc'>('fit_score');
 
   // 4. Modals & Compare
   const [isCaseModalOpen, setIsCaseModalOpen] = useState(false);
@@ -64,7 +65,7 @@ export default function Home() {
       setComparedGpus(comparedGpus.filter((g) => g.id !== gpu.id));
     } else {
       if (comparedGpus.length >= 3) {
-        alert('Maksimal komparasi 3 GPU sekaligus!');
+        alert('Maximum comparison limit is 3 GPUs at a time!');
         return;
       }
       setComparedGpus([...comparedGpus, gpu]);
@@ -98,8 +99,6 @@ export default function Home() {
       let matchesFit = true;
       if (fitStatusFilter === 'COMPATIBLE') {
         matchesFit = clearance.status !== 'INCOMPATIBLE';
-      } else if (fitStatusFilter === 'PERFECT_FIT') {
-        matchesFit = clearance.status === 'PERFECT_FIT';
       }
 
       return matchesSearch && matchesBrand && matchesMfg && matchesLength && matchesSlot && matchesFit;
@@ -118,6 +117,10 @@ export default function Home() {
     return [...filteredGpus].sort((a, b) => {
       if (sortBy === 'fit_score') {
         return b.clearance.score - a.clearance.score;
+      } else if (sortBy === 'vram_desc') {
+        const vramA = parseInt(a.gpu.memorySize, 10) || 0;
+        const vramB = parseInt(b.gpu.memorySize, 10) || 0;
+        return vramB - vramA;
       } else if (sortBy === 'time_spy_desc') {
         return b.gpu.timeSpyScore - a.gpu.timeSpyScore;
       } else if (sortBy === 'length_asc') {
@@ -141,18 +144,17 @@ export default function Home() {
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
       {/* Navbar */}
       <Navbar
-        totalGpus={INITIAL_GPUS.length}
-        activeCaseName={`${activeCase.brand} ${activeCase.name}`}
-        onOpenCaseSelector={() => setIsCaseModalOpen(true)}
-        showVisualizer={showVisualizer}
-        onToggleVisualizer={() => setShowVisualizer(!showVisualizer)}
+        pcCase={activeCase}
+        onChangeCaseClick={() => setIsCaseModalOpen(true)}
+        comparedCount={comparedGpus.length}
+        onOpenCompareClick={() => setIsCompareModalOpen(true)}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 flex-1 w-full">
         {/* Active Case Banner */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 shadow-md">
           <div>
-            <div className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider">Target PC Case Saat Ini</div>
+            <div className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider">Active Target PC Case</div>
             <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
               {activeCase.brand} {activeCase.name}
               <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-normal">
@@ -160,7 +162,7 @@ export default function Home() {
               </span>
             </h2>
             <div className="text-xs font-mono text-slate-400 mt-0.5">
-              Batas Panjang: <span className="text-cyan-300 font-bold">{activeCase.maxGpuLengthMm} mm</span> &bull; Batas Tinggi: <span className="text-indigo-300 font-bold">{activeCase.maxGpuHeightMm} mm</span> &bull; Batas Slot: <span className="text-fuchsia-300 font-bold">{activeCase.maxGpuSlotThickness} Slot</span>
+              Max Length: <span className="text-cyan-300 font-bold">{activeCase.maxGpuLengthMm} mm</span> &bull; Max Height: <span className="text-indigo-300 font-bold">{activeCase.maxGpuHeightMm} mm</span> &bull; Max Slot: <span className="text-fuchsia-300 font-bold">{activeCase.maxGpuSlotThickness} Slots</span>
             </div>
           </div>
 
@@ -168,18 +170,18 @@ export default function Home() {
             onClick={() => setIsCaseModalOpen(true)}
             className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold font-mono transition-all shadow-md shadow-cyan-600/20"
           >
-            Ganti Model Case
+            Change Target Case
           </button>
         </div>
 
-        {/* Blueprint Visualizer (Collapsible) */}
+        {/* Studio Visualizer (Collapsible) */}
         {showVisualizer && (
           <GPUFitVisualizer
             gpu={visualizerGpu}
             pcCase={activeCase}
             clearance={visualizerClearance}
             userPsuWattage={userPsuWattage}
-            onChangeUserPsuWattage={setUserPsuWattage}
+            onUserPsuChange={setUserPsuWattage}
           />
         )}
 
@@ -189,7 +191,7 @@ export default function Home() {
             <div className="relative flex-1" style={{ minWidth: '220px' }}>
               <input
                 type="text"
-                placeholder="Cari GPU (e.g. RTX 4080, Strix, Sapphire)..."
+                placeholder="Search GPU (e.g. RTX 4070 Super, Strix, Sapphire)..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500"
@@ -207,7 +209,7 @@ export default function Home() {
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  {b === 'ALL' ? 'Semua Brand' : b}
+                  {b === 'ALL' ? 'All Brands' : b}
                 </button>
               ))}
             </div>
@@ -219,7 +221,7 @@ export default function Home() {
                   fitStatusFilter === 'ALL' ? 'bg-slate-800 text-white font-bold' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                Semua Status
+                All Status
               </button>
               <button
                 onClick={() => setFitStatusFilter('COMPATIBLE')}
@@ -229,17 +231,7 @@ export default function Home() {
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                Muat (Fit) 🟢
-              </button>
-              <button
-                onClick={() => setFitStatusFilter('PERFECT_FIT')}
-                className={`px-3 py-1 rounded-lg transition-all ${
-                  fitStatusFilter === 'PERFECT_FIT'
-                    ? 'bg-cyan-950 text-cyan-400 font-bold border border-cyan-800/50'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Perfect Fit ⚡
+                Fit (Compatible) 🟢
               </button>
             </div>
 
@@ -251,7 +243,7 @@ export default function Home() {
                   : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200'
               }`}
             >
-              Filter Lanjutan
+              Advanced Filters
             </button>
           </div>
 
@@ -260,13 +252,13 @@ export default function Home() {
             <div className="pt-3 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs font-mono bg-slate-950 p-4 rounded-xl border">
               <div>
                 <div className="flex justify-between mb-1 text-slate-400">
-                  <span>Batas Panjang GPU</span>
+                  <span>Max GPU Length</span>
                   <span className="text-cyan-400 font-bold">&le; {maxLengthFilter} mm</span>
                 </div>
                 <input
                   type="range"
-                  min="150"
-                  max="360"
+                  min="200"
+                  max="380"
                   step="5"
                   value={maxLengthFilter}
                   onChange={(e) => setMaxLengthFilter(Number(e.target.value))}
@@ -276,7 +268,7 @@ export default function Home() {
 
               <div>
                 <div className="flex justify-between mb-1 text-slate-400">
-                  <span>Batas Ketebalan Slot</span>
+                  <span>Max Slot Thickness</span>
                   <span className="text-indigo-400 font-bold">&le; {maxSlotFilter} Slots</span>
                 </div>
                 <input
@@ -291,12 +283,12 @@ export default function Home() {
               </div>
 
               <div className="flex items-end justify-between">
-                <span className="text-slate-500 text-[11px]">Setel ulang ke default</span>
+                <span className="text-slate-500 text-[11px]">Reset all filters to default</span>
                 <button
                   onClick={handleResetFilters}
                   className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white text-xs"
                 >
-                  Reset Filter
+                  Reset Filters
                 </button>
               </div>
             </div>
@@ -306,8 +298,8 @@ export default function Home() {
         {/* Directory Summary Bar & View Layout Switcher */}
         <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-mono text-slate-400 px-1">
           <div>
-            Menampilkan <span className="text-cyan-400 font-bold">{sortedGpus.length}</span> GPU
-            (<span className="text-emerald-400 font-bold">{compatibleCount}</span> kompatibel dengan {activeCase.name})
+            Showing <span className="text-cyan-400 font-bold">{sortedGpus.length}</span> GPUs
+            (<span className="text-emerald-400 font-bold">{compatibleCount}</span> compatible with {activeCase.name})
           </div>
 
           <div className="flex items-center gap-3">
@@ -321,7 +313,7 @@ export default function Home() {
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Tabel List
+                Table View
               </button>
               <button
                 onClick={() => setViewLayout('grid')}
@@ -331,22 +323,23 @@ export default function Home() {
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Grid Kartu
+                Card Grid
               </button>
             </div>
 
             {/* Sort Dropdown */}
             <div className="flex items-center gap-1.5">
-              <span>Urutkan:</span>
+              <span>Sort by:</span>
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as 'fit_score' | 'time_spy_desc' | 'length_asc' | 'length_desc')}
+                onChange={(e) => setSortBy(e.target.value as 'fit_score' | 'vram_desc' | 'time_spy_desc' | 'length_asc' | 'length_desc')}
                 className="bg-slate-900 border border-slate-800 text-white rounded-lg px-2.5 py-1 focus:outline-none focus:border-cyan-500"
               >
-                <option value="fit_score">Skor Kompatibilitas Terbaik</option>
-                <option value="time_spy_desc">Skor 3DMark Time Spy (Performa Tertinggi)</option>
-                <option value="length_asc">Panjang (Terpendek Dulu)</option>
-                <option value="length_desc">Panjang (Terpanjang Dulu)</option>
+                <option value="fit_score">Best Fit Score</option>
+                <option value="vram_desc">High VRAM (Highest First)</option>
+                <option value="time_spy_desc">3DMark Score (Highest First)</option>
+                <option value="length_asc">Length (Shortest First)</option>
+                <option value="length_desc">Length (Longest First)</option>
               </select>
             </div>
           </div>
@@ -371,7 +364,7 @@ export default function Home() {
                   key={gpu.id}
                   gpu={gpu}
                   clearance={clearance}
-                  isSelectedInVisualizer={visualizerGpu.id === gpu.id && showVisualizer}
+                  isSelectedForVisualizer={visualizerGpu.id === gpu.id && showVisualizer}
                   onSelectForVisualizer={handleSelectGpuForVisualizer}
                   isCompared={comparedGpus.some((g) => g.id === gpu.id)}
                   onToggleCompare={handleToggleCompare}
@@ -381,12 +374,12 @@ export default function Home() {
           )
         ) : (
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-12 text-center space-y-3">
-            <h4 className="text-base font-bold text-white">Tidak ada GPU yang sesuai dengan filter</h4>
+            <h4 className="text-base font-bold text-white">No GPUs match your selected filter criteria</h4>
             <button
               onClick={handleResetFilters}
               className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold font-mono transition-all"
             >
-              Reset Filter
+              Reset Filters
             </button>
           </div>
         )}
@@ -396,7 +389,7 @@ export default function Home() {
       {comparedGpus.length > 0 && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 border border-cyan-500/50 rounded-2xl p-3 px-5 shadow-2xl backdrop-blur-xl flex items-center gap-4">
           <span className="text-xs font-mono text-white font-bold">
-            {comparedGpus.length} GPU Dipilih untuk Komparasi
+            {comparedGpus.length} GPU(s) Selected for Comparison
           </span>
 
           <div className="flex items-center gap-2">
@@ -404,13 +397,13 @@ export default function Home() {
               onClick={() => setIsCompareModalOpen(true)}
               className="px-3 py-1.5 rounded-xl bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-xs font-bold font-mono shadow-md shadow-fuchsia-600/30"
             >
-              Buka Matriks Komparasi
+              Open Comparison Matrix
             </button>
             <button
               onClick={() => setComparedGpus([])}
               className="text-xs text-slate-400 hover:text-white px-2"
             >
-              Bersihkan
+              Clear
             </button>
           </div>
         </div>
@@ -432,9 +425,7 @@ export default function Home() {
         onRemoveFromCompare={(id) => setComparedGpus(comparedGpus.filter((g) => g.id !== id))}
       />
 
-      <footer className="border-t border-slate-900 bg-slate-950 py-6 px-4 text-center text-xs font-mono text-slate-500">
-        VGADream Clearance Lab &bull; Dibuat Khusus untuk Kompatibilitas PC Builder
-      </footer>
+      <Footer />
     </div>
   );
 }

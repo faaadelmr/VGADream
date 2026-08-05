@@ -6,7 +6,7 @@ import { ClearanceResult, GPUSpec } from '@/types';
 interface GPUCardProps {
   gpu: GPUSpec;
   clearance: ClearanceResult;
-  isSelectedInVisualizer: boolean;
+  isSelectedForVisualizer: boolean;
   onSelectForVisualizer: (gpu: GPUSpec) => void;
   isCompared: boolean;
   onToggleCompare: (gpu: GPUSpec) => void;
@@ -15,23 +15,23 @@ interface GPUCardProps {
 export const GPUCard: React.FC<GPUCardProps> = ({
   gpu,
   clearance,
-  isSelectedInVisualizer,
+  isSelectedForVisualizer,
   onSelectForVisualizer,
   isCompared,
   onToggleCompare
 }) => {
   const statusBadge =
     clearance.status === 'PERFECT_FIT' ? (
-      <span className="inline-block px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-[11px] font-bold">
+      <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-[10px] font-bold">
         PERFECT FIT
       </span>
     ) : clearance.status === 'TIGHT_FIT' ? (
-      <span className="inline-block px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-[11px] font-bold">
+      <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-[10px] font-bold">
         TIGHT FIT
       </span>
     ) : (
-      <span className="inline-block px-2.5 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 font-mono text-[11px] font-bold">
-        TIDAK MUAT
+      <span className="px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 font-mono text-[10px] font-bold">
+        OVERSIZED
       </span>
     );
 
@@ -39,96 +39,102 @@ export const GPUCard: React.FC<GPUCardProps> = ({
 
   return (
     <div
-      className={`bg-slate-900/80 border rounded-2xl p-4 sm:p-5 transition-all flex flex-col justify-between hover:border-slate-700 ${
-        isSelectedInVisualizer
-          ? 'border-cyan-500 ring-2 ring-cyan-500/30 bg-slate-900'
-          : 'border-slate-800/80'
+      className={`bg-slate-900 border rounded-2xl p-4 sm:p-5 flex flex-col justify-between space-y-4 transition-all duration-200 hover:shadow-xl ${
+        isSelectedForVisualizer
+          ? 'border-cyan-500 shadow-cyan-500/10 ring-1 ring-cyan-500/50'
+          : 'border-slate-800 hover:border-slate-700'
       }`}
     >
+      {/* Top Header & Badges */}
       <div>
-        {/* Top Header: Brand & Status */}
-        <div className="flex items-start justify-between gap-3 mb-2">
-          <div>
-            <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider font-bold block mb-0.5">
-              {gpu.manufacturer} &bull; {gpu.chipset}
-            </span>
-            <h3 className="text-sm font-bold text-white leading-snug">{gpu.name}</h3>
-          </div>
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider font-bold">
+            {gpu.manufacturer} &bull; {gpu.chipset}
+          </span>
           {statusBadge}
         </div>
 
-        {/* 3DMark Time Spy Benchmark Score Pill */}
-        <div className="flex items-center justify-between text-xs font-mono bg-indigo-950/60 border border-indigo-800/50 p-2 rounded-xl text-indigo-300 my-2">
-          <span>3DMark Time Spy:</span>
-          <span className="font-bold text-indigo-200">{gpu.timeSpyScore.toLocaleString()} pts</span>
-        </div>
+        <h3 className="text-base font-bold text-white leading-tight mb-2">{gpu.name}</h3>
 
-        {/* Combined Hardware Spec Pill */}
-        <div className="my-2 bg-slate-950 p-2 rounded-xl border border-slate-800 font-mono text-xs text-cyan-300 font-bold">
-          {formattedSpecString}
-        </div>
-
-        {/* 3 Core Dimension Stats (P x T x L) */}
-        <div className="my-2.5 grid grid-cols-3 gap-2 bg-slate-950 p-2.5 rounded-xl border border-slate-800 text-center font-mono">
-          <div>
-            <div className="text-[9px] text-slate-400 uppercase">Panjang (P)</div>
-            <div className="text-xs font-bold text-cyan-300">{gpu.lengthMm} mm</div>
-          </div>
-          <div>
-            <div className="text-[9px] text-slate-400 uppercase">Tinggi (T)</div>
-            <div className="text-xs font-bold text-indigo-300">{gpu.heightMm} mm</div>
-          </div>
-          <div>
-            <div className="text-[9px] text-slate-400 uppercase">Lebar (L)</div>
-            <div className="text-xs font-bold text-fuchsia-300">{gpu.thicknessMm} mm</div>
-          </div>
-        </div>
-
-        {/* Clearance Margin Bar */}
-        <div className="flex items-center justify-between text-xs font-mono bg-slate-950/60 px-3 py-2 rounded-lg border border-slate-800/80 mb-2.5">
-          <span className="text-slate-400">Sisa Ruang Panjang:</span>
-          <span
-            className={`font-bold ${
-              clearance.lengthMarginMm >= 0 ? 'text-emerald-400' : 'text-rose-400'
-            }`}
-          >
-            {clearance.lengthMarginMm >= 0
-              ? `+${clearance.lengthMarginMm} mm`
-              : `${clearance.lengthMarginMm} mm (Nongol)`}
+        {/* 3DMark Time Spy Score Banner */}
+        <div className="bg-indigo-950/60 border border-indigo-800/50 rounded-xl px-3 py-1.5 mb-3 flex items-center justify-between">
+          <span className="text-[11px] font-mono text-indigo-300 font-bold uppercase">3DMark Time Spy:</span>
+          <span className="text-sm font-mono font-extrabold text-indigo-300">
+            {gpu.timeSpyScore.toLocaleString()} pts
           </span>
         </div>
 
-        {/* Power & PSU + TDP Strip */}
-        <div className="mb-3 p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono flex items-center justify-between">
-          <span className="text-amber-400 font-bold">{gpu.powerConnector}</span>
-          <span className="text-slate-400 text-[11px]">
-            TDP <strong className="text-rose-400 font-bold">{gpu.tdpWatts}</strong> &bull; Min. PSU {gpu.recommendedPsuW}W
-          </span>
+        {/* Display Outputs Badge */}
+        <div className="bg-fuchsia-950/40 border border-fuchsia-800/40 rounded-xl px-3 py-1.5 mb-3 text-xs font-mono">
+          <div className="text-[10px] text-fuchsia-400 font-bold uppercase mb-0.5">Display Output Ports:</div>
+          <div className="text-fuchsia-200 font-bold text-xs">{gpu.displayOutputs}</div>
+        </div>
+
+        {/* Hardware Specifications */}
+        <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3 text-xs font-mono mb-3">
+          <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">Hardware Specs:</div>
+          <div className="font-bold text-cyan-300 leading-snug">{formattedSpecString}</div>
+        </div>
+
+        {/* Physical Dimension Grid (Length x Height x Width) */}
+        <div className="grid grid-cols-3 gap-2 bg-slate-950 rounded-xl p-2.5 text-center font-mono text-xs mb-3 border border-slate-800/60">
+          <div>
+            <div className="text-[10px] text-slate-500">Length (L)</div>
+            <div className="font-bold text-cyan-400">{gpu.lengthMm} mm</div>
+          </div>
+          <div>
+            <div className="text-[10px] text-slate-500">Height (H)</div>
+            <div className="font-bold text-indigo-400">{gpu.heightMm} mm</div>
+          </div>
+          <div>
+            <div className="text-[10px] text-slate-500">Width (W)</div>
+            <div className="font-bold text-fuchsia-400">{gpu.thicknessMm} mm</div>
+          </div>
+        </div>
+
+        {/* Power & PSU Info */}
+        <div className="space-y-1 text-xs font-mono text-slate-300 bg-slate-950/40 p-2.5 rounded-xl border border-slate-800/40">
+          <div className="flex justify-between">
+            <span className="text-slate-500">Power Connector:</span>
+            <span className="text-amber-400 font-bold">{gpu.powerConnector}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-500">TDP Wattage:</span>
+            <span className="text-rose-400 font-bold">{gpu.tdpWatts}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-500">Recommended PSU:</span>
+            <span className="text-white font-bold">{gpu.recommendedPsuW}W</span>
+          </div>
+          <div className="flex justify-between pt-1 border-t border-slate-800/60">
+            <span className="text-slate-500">Slot Thickness:</span>
+            <span className="text-slate-300 font-bold">{gpu.slotThickness} Slots</span>
+          </div>
         </div>
       </div>
 
-      {/* Footer Actions */}
-      <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2 font-mono text-xs">
+      {/* Action Footer Buttons */}
+      <div className="pt-2 flex items-center gap-2 border-t border-slate-800/60">
         <button
           onClick={() => onToggleCompare(gpu)}
-          className={`px-2.5 py-1.5 rounded-lg border transition-all ${
+          className={`flex-1 py-2 px-3 rounded-xl text-xs font-mono font-bold transition-all border ${
             isCompared
-              ? 'bg-fuchsia-950 border-fuchsia-600 text-fuchsia-300 font-bold'
+              ? 'bg-fuchsia-950 border-fuchsia-600 text-fuchsia-300'
               : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
           }`}
         >
-          {isCompared ? '✓ Terpilih' : '+ Komparasi'}
+          {isCompared ? '✓ Selected' : '+ Compare'}
         </button>
 
         <button
           onClick={() => onSelectForVisualizer(gpu)}
-          className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
-            isSelectedInVisualizer
-              ? 'bg-cyan-600 text-white shadow-md shadow-cyan-600/30'
+          className={`flex-1 py-2 px-3 rounded-xl text-xs font-mono font-bold transition-all ${
+            isSelectedForVisualizer
+              ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/20'
               : 'bg-slate-800 hover:bg-slate-700 text-cyan-300'
           }`}
         >
-          {isSelectedInVisualizer ? 'Blueprint Aktif' : 'Cek Blueprint'}
+          {isSelectedForVisualizer ? 'Studio Active' : 'Visual Studio'}
         </button>
       </div>
     </div>

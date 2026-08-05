@@ -28,14 +28,13 @@ export const GPUTableList: React.FC<GPUTableListProps> = ({
         <table className="w-full text-left border-collapse font-mono text-xs">
           <thead>
             <tr className="bg-slate-950 border-b border-slate-800 text-slate-400 text-[11px] uppercase tracking-wider">
-              <th className="py-3.5 px-4 font-semibold whitespace-nowrap">Status Fitment</th>
-              <th className="py-3.5 px-4 font-semibold whitespace-nowrap">Nama GPU & Manufacturer</th>
-              {/* Kolom 3DMark TimeSpy: Lebar dapat diatur via kelas w-36 / min-w-[140px] / px-6 di bawah ini */}
-              <th className="py-3.5 px-4 font-semibold whitespace-nowrap text-right min-w-[140px] w-36">3DMark TimeSpy</th>
-              <th className="py-3.5 px-4 font-semibold">Spesifikasi</th>
-              <th className="py-3.5 px-4 font-semibold whitespace-nowrap">Dimensi (P &times; T &times; L)</th>
-              <th className="py-3.5 px-4 font-semibold whitespace-nowrap">Power & PSU (TDP)</th>
-              <th className="py-3.5 px-4 font-semibold text-center whitespace-nowrap">Aksi</th>
+              <th className="py-3.5 px-4 font-semibold whitespace-nowrap">Fitment Status</th>
+              <th className="py-3.5 px-4 font-semibold whitespace-nowrap">GPU &amp; Manufacturer</th>
+              <th className="py-3.5 px-4 font-semibold whitespace-nowrap text-right min-w-[140px] w-36">3DMark Time Spy</th>
+              <th className="py-3.5 px-4 font-semibold whitespace-nowrap">Display Outputs</th>
+              <th className="py-3.5 px-4 font-semibold whitespace-nowrap">Dimension</th>
+              <th className="py-3.5 px-4 font-semibold whitespace-nowrap">Power &amp; PSU (TDP)</th>
+              <th className="py-3.5 px-4 font-semibold text-center whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60">
@@ -53,7 +52,7 @@ export const GPUTableList: React.FC<GPUTableListProps> = ({
                     TIGHT FIT
                   </span>
                 ) : (
-                  <span className="inline-block px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 text-[10px] font-bold">
+                  <span className="inline-block px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-400 font-mono text-[10px] font-bold">
                     OVERSIZED
                   </span>
                 );
@@ -76,7 +75,7 @@ export const GPUTableList: React.FC<GPUTableListProps> = ({
                           clearance.lengthMarginMm >= 0 ? 'text-emerald-400' : 'text-rose-400'
                         }`}
                       >
-                        Sisa: {clearance.lengthMarginMm >= 0 ? `+${clearance.lengthMarginMm}mm` : `${clearance.lengthMarginMm}mm`}
+                        Margin: {clearance.lengthMarginMm >= 0 ? `+${clearance.lengthMarginMm} mm` : `${clearance.lengthMarginMm} mm`}
                       </div>
                     </div>
                   </td>
@@ -88,32 +87,36 @@ export const GPUTableList: React.FC<GPUTableListProps> = ({
                         {gpu.manufacturer} &bull; {gpu.chipset}
                       </div>
                       <div className="font-sans font-bold text-white text-xs">{gpu.name}</div>
+                      <div className="text-[10px] text-cyan-300 font-bold mt-0.5">
+                        {formattedSpecString}
+                      </div>
                     </div>
                   </td>
 
-                  {/* 3DMark TimeSpy Benchmark Score Cell */}
+                  {/* 3DMark Time Spy Benchmark Score Cell */}
                   <td className="py-3.5 px-4 text-right whitespace-nowrap font-bold text-indigo-400 text-xs min-w-[140px] w-36">
-                    {gpu.timeSpyScore.toLocaleString()}pts
+                    {gpu.timeSpyScore.toLocaleString()} pts
                   </td>
 
-                  {/* Single Combined Specs Column */}
-                  <td className="py-3.5 px-4 font-bold text-cyan-300 text-xs">
-                    {formattedSpecString}
+                  {/* Display Outputs Column */}
+                  <td className="py-3.5 px-4 font-bold text-fuchsia-300 text-xs leading-snug">
+                    {gpu.displayOutputs.split(', ').slice(0, 3).map((output, idx) => (
+                      <div key={idx} className="whitespace-nowrap">{output}</div>
+                    ))}
                   </td>
 
-                  {/* Dimensions (P x T x L) */}
-                  <td className="py-3.5 px-4 text-slate-300 text-xs whitespace-nowrap">
-                    <span className="text-cyan-300 font-bold">{gpu.lengthMm}</span> &times;{' '}
-                    <span className="text-indigo-300 font-bold">{gpu.heightMm}</span> &times;{' '}
-                    <span className="text-fuchsia-300 font-bold">{gpu.thicknessMm}</span>mm
+                  {/* Dimensions (L x H x W) */}
+                  <td className="py-3.5 px-4 text-xs leading-snug whitespace-nowrap">
+                    <div className="text-cyan-300 font-bold">L: {gpu.lengthMm} mm</div>
+                    <div className="text-indigo-300 font-bold">H: {gpu.heightMm} mm</div>
+                    <div className="text-fuchsia-300 font-bold">W: {gpu.thicknessMm} mm</div>
                   </td>
 
                   {/* Power & PSU + TDP */}
-                  <td className="py-3.5 px-4 whitespace-nowrap">
+                  <td className="py-3.5 px-4 text-xs leading-snug whitespace-nowrap">
                     <div className="text-amber-400 font-bold text-[11px]">{gpu.powerConnector}</div>
-                    <div className="text-slate-300 text-[10px]">
-                      TDP <span className="text-rose-400 font-bold">{gpu.tdpWatts}</span> &bull; Min. PSU {gpu.recommendedPsuW}W
-                    </div>
+                    <div className="text-rose-400 font-bold text-[10px]">TDP {gpu.tdpWatts}W</div>
+                    <div className="text-slate-300 font-semibold text-[10px]">Min. PSU {gpu.recommendedPsuW}W</div>
                   </td>
 
                   {/* Actions */}
@@ -127,7 +130,7 @@ export const GPUTableList: React.FC<GPUTableListProps> = ({
                             : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
                         }`}
                       >
-                        {isCompared ? '✓ Terpilih' : '+ Komparasi'}
+                        {isCompared ? '✓ Selected' : '+ Compare'}
                       </button>
 
                       <button
@@ -138,7 +141,7 @@ export const GPUTableList: React.FC<GPUTableListProps> = ({
                             : 'bg-slate-800 hover:bg-slate-700 text-cyan-300'
                         }`}
                       >
-                        {isSelected ? 'Blueprint Active' : 'Blueprint 2D'}
+                        {isSelected ? 'Studio Active' : 'Visual Studio'}
                       </button>
                     </div>
                   </td>
