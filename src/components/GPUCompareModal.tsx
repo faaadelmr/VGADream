@@ -81,13 +81,13 @@ export const GPUCompareModal: React.FC<GPUCompareModalProps> = ({
 
                   <div className="space-y-3 flex-1 flex flex-col justify-between">
                     {/* Brand & Name (Fixed min-height for title alignment) */}
-                    <div className="min-h-[50px] flex flex-col justify-end">
+                    <div className="min-h-12.5 flex flex-col justify-end">
                       <div className="text-[10px] font-mono text-cyan-400 uppercase font-bold">{gpu.manufacturer}</div>
                       <h4 className="text-sm font-bold text-white pr-12 line-clamp-2">{gpu.name}</h4>
                     </div>
 
                     {/* Status Badge (Aligned height) */}
-                    <div className="font-mono min-h-[28px] flex items-center">
+                    <div className="font-mono min-h-7 flex items-center">
                       {clearance.status === 'PERFECT_FIT' ? (
                         <span className="inline-block px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
                           ✓ PERFECT FIT 🟢
@@ -108,7 +108,7 @@ export const GPUCompareModal: React.FC<GPUCompareModalProps> = ({
                       
                       {/* 1. 3DMark Time Spy Benchmark */}
                       <div
-                        className={`p-2.5 rounded-lg transition-all min-h-[58px] flex flex-col justify-between ${
+                        className={`p-2.5 rounded-lg transition-all min-h-14.5 flex flex-col justify-between ${
                           isHighestPerf
                             ? 'bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-bold'
                             : 'bg-slate-900/60 border border-slate-800 text-slate-300'
@@ -129,7 +129,7 @@ export const GPUCompareModal: React.FC<GPUCompareModalProps> = ({
 
                       {/* 2. Hardware Specs (VRAM) */}
                       <div
-                        className={`p-2.5 rounded-lg transition-all min-h-[64px] flex flex-col justify-between ${
+                        className={`p-2.5 rounded-lg transition-all min-h-16 flex flex-col justify-between ${
                           isHighestVram
                             ? 'bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-bold'
                             : 'bg-slate-900/60 border border-slate-800 text-slate-300'
@@ -149,7 +149,7 @@ export const GPUCompareModal: React.FC<GPUCompareModalProps> = ({
                       </div>
 
                       {/* 3. Display Output Ports */}
-                      <div className="p-2.5 rounded-lg bg-slate-900/40 border border-slate-800/60 min-h-[58px] flex flex-col justify-between">
+                      <div className="p-2.5 rounded-lg bg-slate-900/40 border border-slate-800/60 min-h-14.5 flex flex-col justify-between">
                         <div className="text-[10px] text-slate-500 uppercase font-bold">Display Outputs:</div>
                         <div className="text-fuchsia-300 font-bold text-xs space-y-0.5">
                           {gpu.displayOutputs.split(', ').slice(0, 3).map((output, idx) => (
@@ -160,7 +160,7 @@ export const GPUCompareModal: React.FC<GPUCompareModalProps> = ({
 
                       {/* 4. Power & PSU (TDP) */}
                       <div
-                        className={`p-2.5 rounded-lg transition-all min-h-[66px] flex flex-col justify-between ${
+                        className={`p-2.5 rounded-lg transition-all min-h-16.5 flex flex-col justify-between ${
                           isLowestPower
                             ? 'bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-bold'
                             : 'bg-slate-900/60 border border-slate-800 text-slate-300'
@@ -181,7 +181,7 @@ export const GPUCompareModal: React.FC<GPUCompareModalProps> = ({
                       </div>
 
                       {/* 5. Dimensions & Slot Thickness */}
-                      <div className="p-2.5 rounded-lg bg-slate-900/40 border border-slate-800/60 min-h-[52px] flex flex-col justify-between">
+                      <div className="p-2.5 rounded-lg bg-slate-900/40 border border-slate-800/60 min-h-13 flex flex-col justify-between">
                         <div className="flex justify-between">
                           <span className="text-slate-400">Dimensions:</span>
                           <span className="text-cyan-300 font-bold">{gpu.lengthMm} &times; {gpu.heightMm} &times; {gpu.thicknessMm} mm</span>
@@ -194,7 +194,7 @@ export const GPUCompareModal: React.FC<GPUCompareModalProps> = ({
 
                       {/* 6. Length Clearance Margin */}
                       <div
-                        className={`p-2.5 rounded-lg transition-all min-h-[54px] flex flex-col justify-between ${
+                        className={`p-2.5 rounded-lg transition-all min-h-13.5 flex flex-col justify-between ${
                           isBestFit
                             ? 'bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-bold'
                             : 'bg-slate-900/60 border border-slate-800 text-slate-300'

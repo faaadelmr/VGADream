@@ -15,7 +15,6 @@ interface GPUTableListProps {
 
 export const GPUTableList: React.FC<GPUTableListProps> = ({
   gpus,
-  pcCase,
   visualizerGpuId,
   showVisualizer,
   onSelectForVisualizer,
@@ -30,7 +29,7 @@ export const GPUTableList: React.FC<GPUTableListProps> = ({
             <tr className="bg-slate-950 border-b border-slate-800 text-slate-400 text-[11px] uppercase tracking-wider">
               <th className="py-3.5 px-4 font-semibold whitespace-nowrap">Fitment Status</th>
               <th className="py-3.5 px-4 font-semibold whitespace-nowrap">GPU &amp; Manufacturer</th>
-              <th className="py-3.5 px-4 font-semibold whitespace-nowrap text-right min-w-[140px] w-36">3DMark Time Spy</th>
+              <th className="py-3.5 px-4 font-semibold whitespace-nowrap text-right min-w-36 w-36">3DMark Time Spy</th>
               <th className="py-3.5 px-4 font-semibold whitespace-nowrap">Display Outputs</th>
               <th className="py-3.5 px-4 font-semibold whitespace-nowrap">Dimension</th>
               <th className="py-3.5 px-4 font-semibold whitespace-nowrap">Power &amp; PSU (TDP)</th>
@@ -94,7 +93,7 @@ export const GPUTableList: React.FC<GPUTableListProps> = ({
                   </td>
 
                   {/* 3DMark Time Spy Benchmark Score Cell */}
-                  <td className="py-3.5 px-4 text-right whitespace-nowrap font-bold text-indigo-400 text-xs min-w-[140px] w-36">
+                  <td className="py-3.5 px-4 text-right whitespace-nowrap font-bold text-indigo-400 text-xs min-w-36 w-36">
                     {gpu.timeSpyScore.toLocaleString()} pts
                   </td>
 

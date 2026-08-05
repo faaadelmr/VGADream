@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { getPinCount, parsePowerConnectors } from '@/utils/powerConnector';
+import { parsePowerConnectors } from '@/utils/powerConnector';
 import { CaseSpec, GPUSpec } from '@/types';
 
 interface GPUFitVisualizer2DProps {
@@ -15,35 +15,11 @@ interface GPUFitVisualizer2DProps {
   onUserPsuChange?: (wattage: number) => void;
 }
 
-// Dynamic parser for display outputs
-function parseOutputs(outputsStr: string): { dp: number; hdmi: number; usbc: number } {
-  let dp = 0;
-  let hdmi = 0;
-  let usbc = 0;
-  if (!outputsStr) return { dp, hdmi, usbc };
-
-  const parts = outputsStr.split(',').map((s) => s.trim());
-  parts.forEach((part) => {
-    const match = part.match(/^(\d+)x\s+(.+)$/i);
-    if (match) {
-      const count = parseInt(match[1], 10);
-      const name = match[2].toUpperCase();
-      if (name.includes('HDMI')) hdmi += count;
-      else if (name.includes('USB')) usbc += count;
-      else dp += count;
-    }
-  });
-
-  return { dp, hdmi, usbc };
-}
-
 export const GPUFitVisualizer2D: React.FC<GPUFitVisualizer2DProps> = ({
   gpu,
   pcCase,
   isCompatible,
   lengthMarginMm,
-  riserSlotOffsetMm = 50,
-  onRiserSlotOffsetChange,
   userPsuWattage,
   onUserPsuChange
 }) => {
@@ -90,31 +66,35 @@ export const GPUFitVisualizer2D: React.FC<GPUFitVisualizer2DProps> = ({
   const gpuX = startX;
   const gpuY = startY + chamberHeightPx - gpuHeightOrWidthPx;
 
-  const ports = parseOutputs(gpu.displayOutputs);
-
   return (
     <div className="relative w-full bg-slate-950 rounded-xl overflow-hidden border border-slate-800 p-4 sm:p-5 shadow-2xl space-y-4">
       {/* 2D Header: Left (Compact Riser & PSU Configurator) / Right (Top View & Side View Switcher) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono border-b border-slate-800/80 pb-3">
         {/* Top-Left Compact PSU Calculator */}
         <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 p-1 px-2.5 rounded-xl backdrop-blur-md">
-          <span className="text-[10px] text-amber-400 font-bold uppercase">PSU:</span>
-          <input
-            type="number"
-            min={300}
-            max={1600}
-            step={50}
-            value={userPsuWattage || 750}
-            onChange={(e) => onUserPsuChange?.(Number(e.target.value))}
-            className="w-14 px-1 py-0.5 bg-slate-950 border border-slate-700 rounded text-[10px] font-bold text-amber-400 focus:outline-none focus:border-amber-500 text-center"
-          />
-          <span className="text-[10px] text-slate-400">W</span>
-          {userPsuWattage !== undefined && (
+          <span className="text-[10px] text-slate-400 font-bold uppercase">PSU Power:</span>
+          <div className="flex items-center gap-1">
+            <input
+              type="number"
+              min={300}
+              max={1600}
+              step={50}
+              value={userPsuWattage || 750}
+              onChange={(e) => onUserPsuChange && onUserPsuChange(Number(e.target.value))}
+              className="w-16 bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5 text-xs text-cyan-400 font-bold text-center focus:outline-none focus:border-cyan-500"
+            />
+            <span className="text-slate-400 font-bold">W</span>
+          </div>
+
+          <span className="text-slate-600 font-bold ml-1">&bull;</span>
+          <span className="text-[11px] text-slate-400 font-medium">Rec: <strong className="text-white">{gpu.recommendedPsuW}W</strong></span>
+
+          {userPsuWattage && (
             <span
-              className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                (userPsuWattage - gpu.recommendedPsuW) >= 0
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
+              className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ml-1 ${
+                userPsuWattage >= gpu.recommendedPsuW
+                  ? 'bg-emerald-950/80 border-emerald-800/60 text-emerald-400'
+                  : 'bg-rose-950/80 border-rose-800/60 text-rose-400'
               }`}
             >
               {(userPsuWattage - gpu.recommendedPsuW) >= 0
@@ -144,7 +124,7 @@ export const GPUFitVisualizer2D: React.FC<GPUFitVisualizer2DProps> = ({
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            Side View
+            Side Profile
           </button>
         </div>
       </div>
@@ -153,7 +133,7 @@ export const GPUFitVisualizer2D: React.FC<GPUFitVisualizer2DProps> = ({
       <div className="w-full overflow-x-auto bg-slate-950 rounded-xl border border-slate-900 p-2">
         <svg
           viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-          className="w-full h-auto min-w-[750px] font-mono select-none"
+          className="w-full h-auto min-w-187.5 font-mono select-none"
         >
           {/* Blueprint Grid & Marker Definitions */}
           <defs>
@@ -252,11 +232,31 @@ export const GPUFitVisualizer2D: React.FC<GPUFitVisualizer2DProps> = ({
                 />
               ))}
 
-              {/* PCB trace lines (horizontal, subtle) */}
-              <line x1={gpuX + 8} y1={gpuY + gpuHeightOrWidthPx * 0.25} x2={gpuX + gpuWidthPx - 8} y2={gpuY + gpuHeightOrWidthPx * 0.25}
-                stroke="#1e40af" strokeWidth="0.6" strokeDasharray="8 4" opacity="0.4" />
-
-              {/* ═══ TOP STRIP = PCB / Backplate (the flat metal back side facing side panel) ═══ */}
+              {/* PCIe Bracket Notch on Rear Wall (bottom edge) */}
+              <rect
+                x={startX - 14}
+                y={startY + chamberHeightPx - Math.min(gpu.slotThickness * SLOT_TO_MM * scaleY, chamberHeightPx)}
+                width="6"
+                height={Math.min(gpu.slotThickness * SLOT_TO_MM * scaleY, chamberHeightPx)}
+                fill="#94a3b8"
+                rx="1"
+              />
+              <text
+                x={startX - 22}
+                y={startY + chamberHeightPx - (gpu.slotThickness * SLOT_TO_MM * scaleY) / 2}
+                fill="#cbd5e1"
+                fontSize="7"
+                fontWeight="bold"
+                textAnchor="middle"
+                transform={`rotate(-90 ${startX - 22} ${startY + chamberHeightPx - (gpu.slotThickness * SLOT_TO_MM * scaleY) / 2})`}
+              >
+                {gpu.slotThickness} SLOTS ({gpu.thicknessMm}mm)
+              </text>
+            </>
+          ) : (
+            /* TOP VIEW ANATOMY: Length x Height — main side panel view */
+            <>
+              {/* ═══ TOP STRIP = BACKPLATE / PCB (facing top of case) ═══ */}
               <rect x={gpuX + 4} y={gpuY} width={gpuWidthPx - 8} height="6" rx="1"
                 fill="#14532d" stroke="#166534" strokeWidth="1" opacity="0.9" />
               <text x={gpuX + gpuWidthPx / 2} y={gpuY + 5}
@@ -298,312 +298,321 @@ export const GPUFitVisualizer2D: React.FC<GPUFitVisualizer2DProps> = ({
                       const sockW = socketWidths[sIdx];
                       const colsPerSock = item.cols;
                       const pinW = 3.0;
-                      const pinGap = 1.0;
-                      const rowH = 3.2;
-                      const rowGap = 1.5;
-                      const padX = (sockW - (colsPerSock * pinW + (colsPerSock - 1) * pinGap)) / 2;
-                      const padY = 3.0;
-                      const sockH = padY * 2 + rowH * 2 + rowGap;
+                      const pinH = 3.0;
+                      const pinGapX = (sockW - 4 - colsPerSock * pinW) / Math.max(1, colsPerSock - 1);
 
-                      const sx = curX;
+                      const thisSockX = curX;
                       curX += sockW + socketGap;
 
-                      const r1Y = connY + padY;
-                      const r2Y = connY + padY + rowH + rowGap;
+                      const is12V = item.type === '12VHPWR';
+                      const strokeColor = is12V ? '#f59e0b' : '#38bdf8';
+                      const fillColor = is12V ? '#78350f' : '#0c4a6e';
 
                       return (
-                        <g key={`sock-${sIdx}`}>
-                          {/* Outer Black Housing */}
-                          <rect x={sx} y={connY} width={sockW} height={sockH} rx="1.5"
-                            fill="#0c1a2e" stroke="#f59e0b" strokeWidth="1.2" />
+                        <g key={sIdx}>
+                          {/* Socket Housing */}
+                          <rect
+                            x={thisSockX}
+                            y={connY}
+                            width={sockW}
+                            height="16"
+                            rx="2"
+                            fill={fillColor}
+                            stroke={strokeColor}
+                            strokeWidth="1.2"
+                          />
 
-                          {/* Latch Clip Top */}
-                          <rect x={sx + sockW / 2 - 3} y={connY - 2} width="6" height="2.5" rx="0.5"
-                            fill="#f59e0b" />
-
-                          {/* Row 1 Pins */}
-                          {Array.from({ length: colsPerSock }).map((_, i) => (
-                            <rect key={`r1-${i}`}
-                              x={sx + padX + i * (pinW + pinGap)} y={r1Y} width={pinW} height={rowH} rx="0.4"
-                              fill="#fde68a" stroke="#92400e" strokeWidth="0.3" />
+                          {/* Top Row Pins */}
+                          {Array.from({ length: colsPerSock }).map((_, cIdx) => (
+                            <rect
+                              key={`t-${cIdx}`}
+                              x={thisSockX + 2 + cIdx * (pinW + pinGapX)}
+                              y={connY + 2}
+                              width={pinW}
+                              height={pinH}
+                              fill="#fef08a"
+                              stroke="#ca8a04"
+                              strokeWidth="0.4"
+                            />
                           ))}
 
-                          {/* Row 2 Pins */}
-                          {Array.from({ length: colsPerSock }).map((_, i) => (
-                            <rect key={`r2-${i}`}
-                              x={sx + padX + i * (pinW + pinGap)} y={r2Y} width={pinW} height={rowH} rx="0.4"
-                              fill="#fbbf24" stroke="#92400e" strokeWidth="0.3" />
+                          {/* Bottom Row Pins */}
+                          {Array.from({ length: colsPerSock }).map((_, cIdx) => (
+                            <rect
+                              key={`b-${cIdx}`}
+                              x={thisSockX + 2 + cIdx * (pinW + pinGapX)}
+                              y={connY + 7}
+                              width={pinW}
+                              height={pinH}
+                              fill="#fef08a"
+                              stroke="#ca8a04"
+                              strokeWidth="0.4"
+                            />
                           ))}
 
-                          {/* 12VHPWR 4 sense pins band on top */}
-                          {item.hasSense && (
+                          {/* 12VHPWR 4 Signal Sense Pins */}
+                          {is12V && (
                             <g>
-                              <rect x={sx + 2} y={connY - 4} width={sockW - 4} height="2.5" rx="0.5"
-                                fill="#030712" stroke="#38bdf8" strokeWidth="0.5" />
-                              {Array.from({ length: 4 }).map((_, i) => (
-                                <rect key={`sp-${i}`}
-                                  x={sx + 4 + i * 4.5} y={connY - 3.5} width="2" height="1.5" rx="0.3"
-                                  fill="#38bdf8" />
+                              <rect x={thisSockX + 3} y={connY + 12} width={sockW - 6} height="2.5" fill="#451a03" rx="0.5" />
+                              {Array.from({ length: 4 }).map((_, sPinIdx) => (
+                                <circle
+                                  key={`sig-${sPinIdx}`}
+                                  cx={thisSockX + 5 + sPinIdx * 5.5}
+                                  cy={connY + 13.2}
+                                  r="0.9"
+                                  fill="#fbbf24"
+                                />
                               ))}
                             </g>
                           )}
+
+                          {/* Connector Type Label underneath socket */}
+                          <text
+                            x={thisSockX + sockW / 2}
+                            y={connY + (is12V ? 21 : 19)}
+                            fill={is12V ? '#f59e0b' : '#38bdf8'}
+                            fontSize="5"
+                            fontWeight="bold"
+                            textAnchor="middle"
+                          >
+                            {item.type}
+                          </text>
                         </g>
                       );
                     })}
 
-                    {/* Connector type label above */}
-                    <text x={connX + totalW / 2} y={connY - (pwrSpec.items.some(i => i.hasSense) ? 7 : 4)}
-                      fill="#f59e0b" fontSize="7" fontWeight="bold" textAnchor="middle">
+                    {/* Connector summary tag */}
+                    <text
+                      x={connX + totalW / 2}
+                      y={connY + 27}
+                      fill="#e2e8f0"
+                      fontSize="6"
+                      fontWeight="bold"
+                      textAnchor="middle"
+                    >
                       {gpu.powerConnector}
                     </text>
                   </>
                 );
               })()}
 
-            </>
-          ) : (
-            /* TOP VIEW ANATOMY: Length x Height — looking from the SIDE at GPU face */
-            <>
-              {/* Heatsink Aluminum Fin Textures */}
-              <g stroke="#94a3b8" strokeWidth="0.8" opacity="0.3">
-                {Array.from({ length: Math.floor(gpuWidthPx / 12) }).map((_, i) => (
-                  <line
-                    key={i}
-                    x1={gpuX + 10 + i * 12}
-                    y1={gpuY + 6}
-                    x2={gpuX + 10 + i * 12}
-                    y2={gpuY + gpuHeightOrWidthPx - 6}
-                  />
-                ))}
-              </g>
-
-              {/* Cooling Fans on Shroud Face */}
-              {gpuWidthPx > 80 && (
-                <g opacity="0.6">
-                  <circle cx={gpuX + gpuWidthPx * 0.28} cy={gpuY + gpuHeightOrWidthPx / 2} r={Math.min(gpuHeightOrWidthPx * 0.32, 28)} fill="none" stroke="#e2e8f0" strokeWidth="1.5" />
-                  <circle cx={gpuX + gpuWidthPx * 0.28} cy={gpuY + gpuHeightOrWidthPx / 2} r="4" fill="#38bdf8" />
-
-                  <circle cx={gpuX + gpuWidthPx * 0.72} cy={gpuY + gpuHeightOrWidthPx / 2} r={Math.min(gpuHeightOrWidthPx * 0.32, 28)} fill="none" stroke="#e2e8f0" strokeWidth="1.5" />
-                  <circle cx={gpuX + gpuWidthPx * 0.72} cy={gpuY + gpuHeightOrWidthPx / 2} r="4" fill="#38bdf8" />
-
-                  {gpuWidthPx > 200 && (
-                    <>
-                      <circle cx={gpuX + gpuWidthPx * 0.5} cy={gpuY + gpuHeightOrWidthPx / 2} r={Math.min(gpuHeightOrWidthPx * 0.32, 28)} fill="none" stroke="#e2e8f0" strokeWidth="1.5" />
-                      <circle cx={gpuX + gpuWidthPx * 0.5} cy={gpuY + gpuHeightOrWidthPx / 2} r="4" fill="#38bdf8" />
-                    </>
-                  )}
-                </g>
-              )}
-
-              {/* PCIe Gold Edge Connector — CENTER BOTTOM (real GPU: center of PCB bottom edge) */}
+              {/* ═══ COOLING FANS — 2 or 3 fans depending on GPU length ═══ */}
               {(() => {
-                // PCIe x16 slot fingers: ~89mm wide, centered on GPU body
-                const pcieW = Math.min(gpuWidthPx * 0.45, 120);
-                const pcieX = gpuX + gpuWidthPx / 2 - pcieW / 2;
-                const pcieY = gpuY + gpuHeightOrWidthPx;
-                return (
-                  <>
-                    {/* Gold finger strip */}
-                    <rect x={pcieX} y={pcieY} width={pcieW} height="7" rx="1"
-                      fill="#eab308" stroke="#ca8a04" strokeWidth="1" />
-                    {/* Notch divider (PCIe x16 has retention notch) */}
-                    <rect x={pcieX + pcieW * 0.72} y={pcieY} width="3" height="7"
-                      fill="#0f172a" />
-                    {/* PCIe x16 Label — DIRECTLY BELOW GOLD CONNECTOR FINGERS */}
-                    <text x={gpuX + gpuWidthPx / 2} y={pcieY + 16}
-                      fill="#ca8a04" fontSize="8" fontWeight="bold" textAnchor="middle">
-                      PCIe x16
-                    </text>
-                  </>
-                );
-              })()}
+                const numFans = gpu.lengthMm >= 280 ? 3 : gpu.lengthMm >= 200 ? 2 : 1;
+                const fanCenterY = gpuY + gpuHeightOrWidthPx / 2 + 4; // slightly below center
+                const maxFanR = Math.min((gpuHeightOrWidthPx - 24) / 2, (gpuWidthPx - 40) / (numFans * 2.2));
+                const fanR = Math.max(8, maxFanR);
 
+                const fanSpacing = (gpuWidthPx - 40) / (numFans + 1);
+
+                return Array.from({ length: numFans }).map((_, fIdx) => {
+                  const fanCX = gpuX + 20 + fanSpacing * (fIdx + 1);
+                  return (
+                    <g key={`fan-${fIdx}`} opacity="0.6">
+                      {/* Outer Ring */}
+                      <circle cx={fanCX} cy={fanCenterY} r={fanR} fill="none" stroke="#475569" strokeWidth="1" strokeDasharray="3 1.5" />
+                      {/* Inner Hub */}
+                      <circle cx={fanCX} cy={fanCenterY} r={fanR * 0.35} fill="#334155" stroke="#64748b" strokeWidth="0.8" />
+                      {/* Fan Blades (4 cross lines) */}
+                      {Array.from({ length: 7 }).map((_, bIdx) => {
+                        const angle = (bIdx * (360 / 7) * Math.PI) / 180;
+                        const x2 = fanCX + Math.cos(angle) * (fanR * 0.85);
+                        const y2 = fanCenterY + Math.sin(angle) * (fanR * 0.85);
+                        return <line key={bIdx} x1={fanCX} y1={fanCenterY} x2={x2} y2={y2} stroke="#64748b" strokeWidth="0.7" />;
+                      })}
+                    </g>
+                  );
+                });
+              })()}
             </>
           )}
-
-          {/* GPU Model Label — Positioned below cooling fans */}
-          {(() => {
-            const fanRadius = Math.min(gpuHeightOrWidthPx * 0.32, 28);
-            const textY =
-              viewMode === 'side'
-                ? Math.min(gpuY + gpuHeightOrWidthPx - 9, gpuY + gpuHeightOrWidthPx / 2 + fanRadius + 11)
-                : gpuY + gpuHeightOrWidthPx / 2 + 4;
-
-            return (
-              <text
-                x={gpuX + gpuWidthPx / 2}
-                y={textY}
-                fill="#ffffff"
-                fontSize="11"
-                fontWeight="bold"
-                textAnchor="middle"
-              >
-                {gpu.name} ({gpu.lengthMm} mm)
-              </text>
-            );
-          })()}
 
           {/* CAD DIMENSIONAL LEADER LINES & MARGIN ARROWS */}
           {/* 1. GPU Length Line (Top Dimension - aligned with GPU) */}
           <g>
-            <line x1={startX} y1={startY - 25} x2={startX + gpuWidthPx} y2={startY - 25} stroke="#38bdf8" strokeWidth="1.2" markerStart="url(#arrow-cyan)" markerEnd="url(#arrow-cyan)" />
-            <line x1={startX} y1={startY - 30} x2={startX} y2={startY - 5} stroke="#38bdf8" strokeWidth="0.8" strokeDasharray="2 2" />
-            <line x1={startX + gpuWidthPx} y1={startY - 30} x2={startX + gpuWidthPx} y2={startY - 5} stroke="#38bdf8" strokeWidth="0.8" strokeDasharray="2 2" />
-            <rect x={startX + gpuWidthPx / 2 - 40} y={startY - 35} width="80" height="18" rx="3" fill="#030712" stroke="#38bdf8" strokeWidth="1" />
-            <text x={startX + gpuWidthPx / 2} y={startY - 23} fill="#38bdf8" fontSize="10" fontWeight="bold" textAnchor="middle">
-              GPU {gpu.lengthMm} mm
+            <line x1={gpuX} y1={startY - 15} x2={gpuX + gpuWidthPx} y2={startY - 15} stroke="#06b6d4" strokeWidth="1" markerStart="url(#arrow-cyan)" markerEnd="url(#arrow-cyan)" />
+            <line x1={gpuX} y1={startY - 20} x2={gpuX} y2={startY} stroke="#06b6d4" strokeWidth="0.5" strokeDasharray="2 2" />
+            <line x1={gpuX + gpuWidthPx} y1={startY - 20} x2={gpuX + gpuWidthPx} y2={gpuY} stroke="#06b6d4" strokeWidth="0.5" strokeDasharray="2 2" />
+            <rect x={gpuX + gpuWidthPx / 2 - 40} y={startY - 23} width="80" height="12" fill="#030712" rx="2" />
+            <text x={gpuX + gpuWidthPx / 2} y={startY - 14} fill="#22d3ee" fontSize="9" fontWeight="bold" textAnchor="middle">
+              GPU: {gpu.lengthMm} mm
             </text>
           </g>
 
           {/* 2. Case Max Length Line (Bottom Dimension - aligned with Case Chamber) */}
           <g>
-            <line x1={startX} y1={startY + chamberHeightPx + 32} x2={startX + caseWidthPx} y2={startY + chamberHeightPx + 32} stroke="#06b6d4" strokeWidth="1.2" markerStart="url(#arrow-cyan)" markerEnd="url(#arrow-cyan)" />
-            <line x1={startX} y1={startY + chamberHeightPx + 5} x2={startX} y2={startY + chamberHeightPx + 38} stroke="#06b6d4" strokeWidth="0.8" strokeDasharray="2 2" />
-            <line x1={startX + caseWidthPx} y1={startY + chamberHeightPx + 5} x2={startX + caseWidthPx} y2={startY + chamberHeightPx + 38} stroke="#06b6d4" strokeWidth="0.8" strokeDasharray="2 2" />
-            <rect x={startX + caseWidthPx / 2 - 45} y={startY + chamberHeightPx + 23} width="90" height="18" rx="3" fill="#030712" stroke="#06b6d4" strokeWidth="1" />
-            <text x={startX + caseWidthPx / 2} y={startY + chamberHeightPx + 35} fill="#22d3ee" fontSize="10" fontWeight="bold" textAnchor="middle">
-              MAX {pcCase.maxGpuLengthMm} mm
+            <line x1={startX} y1={startY + chamberHeightPx + 20} x2={startX + caseWidthPx} y2={startY + chamberHeightPx + 20} stroke="#64748b" strokeWidth="1" markerStart="url(#arrow-cyan)" markerEnd="url(#arrow-cyan)" />
+            <line x1={startX} y1={startY + chamberHeightPx} x2={startX} y2={startY + chamberHeightPx + 25} stroke="#64748b" strokeWidth="0.5" strokeDasharray="2 2" />
+            <line x1={startX + caseWidthPx} y1={startY} x2={startX + caseWidthPx} y2={startY + chamberHeightPx + 25} stroke="#64748b" strokeWidth="0.5" strokeDasharray="2 2" />
+            <rect x={startX + caseWidthPx / 2 - 60} y={startY + chamberHeightPx + 12} width="120" height="14" fill="#030712" rx="2" />
+            <text x={startX + caseWidthPx / 2} y={startY + chamberHeightPx + 22} fill="#94a3b8" fontSize="9" fontWeight="bold" textAnchor="middle">
+              Case Max GPU: {pcCase.maxGpuLengthMm} mm
             </text>
           </g>
 
-          {/* PC CASE Chamber Boundary Label — Positioned below bottom MAX badge */}
-          <text
-            x={startX + caseWidthPx / 2}
-            y={startY + chamberHeightPx + 53}
-            fill="#94a3b8"
-            fontSize="10"
-            fontWeight="bold"
-            textAnchor="middle"
-          >
-            PC CASE CHAMBER BOUNDARY: {pcCase.name.toUpperCase()} ({pcCase.maxGpuLengthMm} mm MAX LENGTH)
-          </text>
-
-          {/* 3. Length Clearance Margin (Green or Red Arrow) */}
+          {/* 3. Length Margin Arrow (Front Clearance Gap between GPU end & Case front) */}
           <g>
-            <line
-              x1={startX + gpuWidthPx}
-              y1={gpuY + gpuHeightOrWidthPx / 2}
-              x2={startX + caseWidthPx}
-              y2={gpuY + gpuHeightOrWidthPx / 2}
-              stroke={lengthMarginMm >= 0 ? '#10b981' : '#f43f5e'}
-              strokeWidth="2"
-              markerStart="url(#arrow-emerald)"
-              markerEnd="url(#arrow-emerald)"
-            />
-
-            <rect
-              x={startX + (gpuWidthPx + caseWidthPx) / 2 - 45}
-              y={gpuY + gpuHeightOrWidthPx / 2 - 12}
-              width="90"
-              height="24"
-              rx="4"
-              fill="#090d16"
-              stroke={lengthMarginMm >= 0 ? '#10b981' : '#f43f5e'}
-              strokeWidth="1.5"
-            />
-
-            <text
-              x={startX + (gpuWidthPx + caseWidthPx) / 2}
-              y={gpuY + gpuHeightOrWidthPx / 2 + 4}
-              fill={lengthMarginMm >= 0 ? '#34d399' : '#fb7185'}
-              fontSize="11"
-              fontWeight="bold"
-              textAnchor="middle"
-            >
-              {lengthMarginMm >= 0 ? `+${lengthMarginMm} mm` : `${lengthMarginMm} mm`}
-            </text>
-          </g>
-
-          {/* ═══ Y-AXIS DIMENSION ANNOTATIONS (Right Side) ═══ */}
-          <g>
-            {/* Case MAX boundary line (full chamberHeightPx) */}
-            <line
-              x1={startX + caseWidthPx + 15}
-              y1={startY}
-              x2={startX + caseWidthPx + 15}
-              y2={startY + chamberHeightPx}
-              stroke="#475569"
-              strokeWidth="1"
-              strokeDasharray="3 2"
-            />
-            {/* Case max label at top */}
-            <text
-              x={startX + caseWidthPx + 20}
-              y={startY + 8}
-              fill="#64748b"
-              fontSize="8"
-              fontWeight="bold"
-            >
-              {viewMode === 'side'
-                ? `MAX ${pcCase.maxGpuHeightMm}mm (H)`
-                : `MAX ${pcCase.maxGpuSlotThickness}slot = ${caseMaxThicknessMm.toFixed(1)}mm`}
-            </text>
-
-            {/* GPU dimension arrow */}
-            <line
-              x1={startX + caseWidthPx + 30}
-              y1={gpuY}
-              x2={startX + caseWidthPx + 30}
-              y2={gpuY + gpuHeightOrWidthPx}
-              stroke="#c084fc"
-              strokeWidth="1.5"
-              markerStart="url(#arrow-cyan)"
-              markerEnd="url(#arrow-cyan)"
-            />
-            {/* GPU dimension label */}
-            <rect
-              x={startX + caseWidthPx + 33}
-              y={gpuY + gpuHeightOrWidthPx / 2 - 10}
-              width="95"
-              height="20"
-              rx="3"
-              fill="#0c0f1a"
-              stroke="#7c3aed"
-              strokeWidth="1"
-            />
-            <text
-              x={startX + caseWidthPx + 36}
-              y={gpuY + gpuHeightOrWidthPx / 2 + 4}
-              fill="#c084fc"
-              fontSize="10"
-              fontWeight="bold"
-            >
-              {viewMode === 'side'
-                ? `${gpu.heightMm} mm (H)`
-                : `${gpu.thicknessMm} mm · ${gpu.slotThickness}slot`}
-            </text>
-
-            {/* Clearance gap line (case max - GPU) */}
-            {startY < gpuY && (
+            {lengthMarginMm >= 0 ? (
               <>
-                <line
-                  x1={startX + caseWidthPx + 15}
-                  y1={startY}
-                  x2={startX + caseWidthPx + 15}
-                  y2={gpuY}
-                  stroke={
-                    viewMode === 'side'
-                      ? (gpu.heightMm < pcCase.maxGpuHeightMm ? '#10b981' : '#f43f5e')
-                      : (gpu.thicknessMm < caseMaxThicknessMm ? '#10b981' : '#f43f5e')
-                  }
-                  strokeWidth="2"
+                {/* Compatible Gap Arrow */}
+                {caseWidthPx - gpuWidthPx > 15 && (
+                  <line
+                    x1={gpuX + gpuWidthPx}
+                    y1={startY + chamberHeightPx / 2}
+                    x2={startX + caseWidthPx}
+                    y2={startY + chamberHeightPx / 2}
+                    stroke="#10b981"
+                    strokeWidth="1.5"
+                    markerStart="url(#arrow-emerald)"
+                    markerEnd="url(#arrow-emerald)"
+                  />
+                )}
+                <rect
+                  x={gpuX + gpuWidthPx + (caseWidthPx - gpuWidthPx) / 2 - 35}
+                  y={startY + chamberHeightPx / 2 - 18}
+                  width="70"
+                  height="14"
+                  fill="#064e3b"
+                  rx="3"
+                  stroke="#059669"
+                  strokeWidth="0.8"
                 />
                 <text
-                  x={startX + caseWidthPx + 20}
-                  y={startY + (gpuY - startY) / 2 + 4}
+                  x={gpuX + gpuWidthPx + (caseWidthPx - gpuWidthPx) / 2}
+                  y={startY + chamberHeightPx / 2 - 8}
                   fill="#34d399"
                   fontSize="9"
                   fontWeight="bold"
+                  textAnchor="middle"
                 >
-                  {viewMode === 'side'
-                    ? `+${(pcCase.maxGpuHeightMm - gpu.heightMm).toFixed(1)}mm`
-                    : `+${(caseMaxThicknessMm - gpu.thicknessMm).toFixed(1)}mm`}
+                  +{lengthMarginMm} mm Gap
+                </text>
+              </>
+            ) : (
+              <>
+                {/* Oversized Conflict Extension Bar */}
+                <rect
+                  x={startX + caseWidthPx}
+                  y={gpuY}
+                  width={gpuWidthPx - caseWidthPx}
+                  height={gpuHeightOrWidthPx}
+                  fill="#f43f5e"
+                  fillOpacity="0.3"
+                  stroke="#f43f5e"
+                  strokeWidth="1.5"
+                  strokeDasharray="4 2"
+                />
+                <line
+                  x1={startX + caseWidthPx}
+                  y1={gpuY + gpuHeightOrWidthPx / 2}
+                  x2={gpuX + gpuWidthPx}
+                  y2={gpuY + gpuHeightOrWidthPx / 2}
+                  stroke="#f43f5e"
+                  strokeWidth="2"
+                  markerStart="url(#arrow-rose)"
+                  markerEnd="url(#arrow-rose)"
+                />
+                <rect
+                  x={startX + caseWidthPx + (gpuWidthPx - caseWidthPx) / 2 - 45}
+                  y={gpuY + gpuHeightOrWidthPx / 2 - 10}
+                  width="90"
+                  height="16"
+                  fill="#881337"
+                  rx="4"
+                  stroke="#f43f5e"
+                  strokeWidth="1"
+                />
+                <text
+                  x={startX + caseWidthPx + (gpuWidthPx - caseWidthPx) / 2}
+                  y={gpuY + gpuHeightOrWidthPx / 2 + 1}
+                  fill="#fda4af"
+                  fontSize="9"
+                  fontWeight="bold"
+                  textAnchor="middle"
+                >
+                  OVERSIZED {Math.abs(lengthMarginMm)} mm!
                 </text>
               </>
             )}
           </g>
 
+          {/* ═══ Y-AXIS DIMENSION ANNOTATIONS (Right Side) ═══ */}
+          <g>
+            {/* Vertical case chamber height line */}
+            <line
+              x1={startX + caseWidthPx + 20}
+              y1={startY}
+              x2={startX + caseWidthPx + 20}
+              y2={startY + chamberHeightPx}
+              stroke="#475569"
+              strokeWidth="1"
+              markerStart="url(#arrow-cyan)"
+              markerEnd="url(#arrow-cyan)"
+            />
+            {/* Top tick line */}
+            <line x1={startX + caseWidthPx} y1={startY} x2={startX + caseWidthPx + 25} y2={startY} stroke="#475569" strokeWidth="0.5" strokeDasharray="2 2" />
+            {/* Bottom tick line */}
+            <line x1={startX + caseWidthPx} y1={startY + chamberHeightPx} x2={startX + caseWidthPx + 25} y2={startY + chamberHeightPx} stroke="#475569" strokeWidth="0.5" strokeDasharray="2 2" />
+            {/* Label */}
+            <rect x={startX + caseWidthPx + 24} y={startY + chamberHeightPx / 2 - 8} width="80" height="14" fill="#030712" rx="2" />
+            <text
+              x={startX + caseWidthPx + 26}
+              y={startY + chamberHeightPx / 2 + 2}
+              fill="#94a3b8"
+              fontSize="8"
+              fontWeight="bold"
+            >
+              {viewMode === 'side'
+                ? `Max H: ${pcCase.maxGpuHeightMm}mm`
+                : `Max Slots: ${pcCase.maxGpuSlotThickness} (${Math.round(caseMaxThicknessMm)}mm)`}
+            </text>
+
+            {/* GPU dimension arrow */}
+            <line
+              x1={startX + caseWidthPx + 5}
+              y1={gpuY}
+              x2={startX + caseWidthPx + 5}
+              y2={gpuY + gpuHeightOrWidthPx}
+              stroke={isCompatible ? '#38bdf8' : '#f43f5e'}
+              strokeWidth="1.2"
+              markerStart={isCompatible ? 'url(#arrow-cyan)' : 'url(#arrow-rose)'}
+              markerEnd={isCompatible ? 'url(#arrow-cyan)' : 'url(#arrow-rose)'}
+            />
+            {/* GPU dimension label */}
+            <text
+              x={startX + caseWidthPx + 9}
+              y={gpuY + gpuHeightOrWidthPx / 2 + 3}
+              fill={isCompatible ? '#38bdf8' : '#f43f5e'}
+              fontSize="8"
+              fontWeight="bold"
+            >
+              {viewMode === 'side'
+                ? `GPU H: ${gpu.heightMm}mm`
+                : `GPU: ${gpu.slotThickness} Slots (${gpu.thicknessMm}mm)`}
+            </text>
+          </g>
         </svg>
+      </div>
+
+      {/* Blueprint Legend Footer */}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-slate-400 border-t border-slate-800/80 pt-3">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-sm bg-cyan-500/30 border border-cyan-400" />
+            <span>GPU Physical Shroud</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-sm bg-slate-900 border border-slate-700 border-dashed" />
+            <span>Case Max GPU Chamber</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-sm bg-amber-900/60 border border-amber-500" />
+            <span>Power Connector</span>
+          </span>
+        </div>
+        <div className="text-[10px] text-slate-500">
+          Scale: 1:1 Proportional CAD Vector Model &bull; CAD Engine v2.4
+        </div>
       </div>
     </div>
   );

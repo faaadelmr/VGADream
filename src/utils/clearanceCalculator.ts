@@ -1,7 +1,7 @@
 import { CaseSpec, ClearanceResult, GPUSpec } from '@/types';
 
 export interface ClearanceOptions {
-  userPsuWattage?: number; // Kapasitas PSU milik pengguna (misal 750W)
+  userPsuWattage?: number;
   extraBufferMm?: number;
 }
 
@@ -28,21 +28,21 @@ export function evaluateClearance(
 
   if (lengthMarginMm < 0) {
     reasons.push(
-      `Melebihi panjang maksimal case sebesar ${Math.abs(lengthMarginMm)} mm (Max Case: ${effectiveMaxGpuLengthMm} mm vs GPU: ${gpu.lengthMm} mm)`
+      `Exceeds maximum GPU length by ${Math.abs(lengthMarginMm)} mm (Max Case: ${effectiveMaxGpuLengthMm} mm vs GPU: ${gpu.lengthMm} mm)`
     );
   } else if (lengthMarginMm < 8) {
-    warnings.push(`Sisa ruang panjang amat sempit (${lengthMarginMm} mm gap remaining). Pemasangan membutuhkan miring.`);
+    warnings.push(`Extremely tight length clearance (${lengthMarginMm} mm gap remaining). Angled installation required.`);
   }
 
   if (heightMarginMm < 0) {
     reasons.push(
-      `Melebihi batas tinggi GPU sebesar ${Math.abs(heightMarginMm)} mm (Max Case: ${effectiveMaxGpuHeightMm} mm vs GPU: ${gpu.heightMm} mm)`
+      `Exceeds maximum GPU height limit by ${Math.abs(heightMarginMm)} mm (Max Case: ${effectiveMaxGpuHeightMm} mm vs GPU: ${gpu.heightMm} mm)`
     );
   }
 
   if (thicknessMarginMm < 0 || slotMargin < 0) {
     reasons.push(
-      `Melebihi batas slot ekspansi (Max Case: ${pcCase.maxGpuSlotThickness} Slot / ${pcCase.maxGpuThicknessMm} mm vs GPU: ${gpu.slotThickness} Slot / ${gpu.thicknessMm} mm)`
+      `Exceeds expansion slot limit (Max Case: ${pcCase.maxGpuSlotThickness} Slots / ${pcCase.maxGpuThicknessMm} mm vs GPU: ${gpu.slotThickness} Slots / ${gpu.thicknessMm} mm)`
     );
   }
 
@@ -50,7 +50,7 @@ export function evaluateClearance(
   const requiresSagBracket = (gpu.weightGrams && gpu.weightGrams >= 1500) || gpu.lengthMm >= 320;
   if (requiresSagBracket) {
     warnings.push(
-      `GPU Sag Warning: GPU ini cukup berat (${gpu.weightGrams ? gpu.weightGrams + 'g' : gpu.lengthMm + 'mm'}). Disarankan memakai GPU Sag Support Bracket agar slot PCIe tidak bengkok.`
+      `GPU Sag Warning: Heavy GPU (${gpu.weightGrams ? gpu.weightGrams + 'g' : gpu.lengthMm + 'mm'}). Anti-sag support bracket recommended to prevent PCIe slot strain.`
     );
   }
 

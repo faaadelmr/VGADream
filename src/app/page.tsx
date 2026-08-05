@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { INITIAL_GPUS } from '@/data/gpus';
+import React, { useState, useEffect, useMemo } from 'react';
 import { INITIAL_CASES } from '@/data/cases';
 import { CaseSpec, GPUSpec } from '@/types';
 import { evaluateClearance } from '@/utils/clearanceCalculator';
@@ -13,15 +12,20 @@ import { GPUCard } from '@/components/GPUCard';
 import { GPUTableList } from '@/components/GPUTableList';
 import { CaseSelectorModal } from '@/components/CaseSelectorModal';
 import { GPUCompareModal } from '@/components/GPUCompareModal';
+import { Database, Loader2, RefreshCw } from 'lucide-react';
 
 export default function Home() {
-  // 1. Core State
+  // 1. Core State & D1 Async Data Fetching
+  const [gpus, setGpus] = useState<GPUSpec[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [dataSource, setDataSource] = useState<string>('cloudflare_d1');
+
   const [activeCase, setActiveCase] = useState<CaseSpec>(INITIAL_CASES[0]); // Fractal Terra
   const [userPsuWattage, setUserPsuWattage] = useState<number>(750); // Default 750W PSU
 
-  // 2. Visualizer visibility toggle & selected GPU (Default RTX 4070 Super Founders Edition)
+  // 2. Visualizer visibility toggle & selected GPU
   const [showVisualizer, setShowVisualizer] = useState(false);
-  const [visualizerGpu, setVisualizerGpu] = useState<GPUSpec>(INITIAL_GPUS[0]);
+  const [visualizerGpu, setVisualizerGpu] = useState<GPUSpec | null>(null);
 
   // View Layout Mode: 'table' (default) or 'grid'
   const [viewLayout, setViewLayout] = useState<'table' | 'grid'>('table');
@@ -41,6 +45,32 @@ export default function Home() {
   const [isCaseModalOpen, setIsCaseModalOpen] = useState(false);
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
   const [comparedGpus, setComparedGpus] = useState<GPUSpec[]>([]);
+
+  // Fetch GPUs from Cloudflare D1 API endpoint
+  const fetchGpusFromD1 = async () => {
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/gpus');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.gpus) {
+          setGpus(data.gpus);
+          setDataSource(data.source || 'cloudflare_d1');
+          if (data.gpus.length > 0) {
+            setVisualizerGpu(data.gpus[0]);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch GPUs from Cloudflare D1 API:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchGpusFromD1();
+  }, []);
 
   const handleResetFilters = () => {
     setSearchTerm('');
@@ -74,13 +104,13 @@ export default function Home() {
 
   // 5. Clearance evaluation
   const evaluatedGpus = useMemo(() => {
-    return INITIAL_GPUS.map((gpu) => {
+    return gpus.map((gpu) => {
       const clearance = evaluateClearance(gpu, activeCase, {
         userPsuWattage
       });
       return { gpu, clearance };
     });
-  }, [activeCase, userPsuWattage]);
+  }, [gpus, activeCase, userPsuWattage]);
 
   // Filtered GPUs
   const filteredGpus = useMemo(() => {
@@ -133,6 +163,7 @@ export default function Home() {
   }, [filteredGpus, sortBy]);
 
   const visualizerClearance = useMemo(() => {
+    if (!visualizerGpu) return null;
     return evaluateClearance(visualizerGpu, activeCase, {
       userPsuWattage
     });
@@ -151,6 +182,38 @@ export default function Home() {
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 flex-1 w-full">
+        {/* Cloudflare D1 Database Connection Banner */}
+        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 shadow-md backdrop-blur-xl">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-cyan-950/60 border border-cyan-800/50 text-cyan-400">
+              <Database className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+                  Cloudflare D1 Database Connection
+                </span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950 border border-emerald-800 text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5" />
+                  Active Endpoint
+                </span>
+              </div>
+              <p className="text-xs font-mono text-slate-400 mt-0.5">
+                Fetching live GPU records directly from Cloudflare D1 SQL database Edge binding (`/api/gpus`).
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={fetchGpusFromD1}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono font-bold transition-all border border-slate-700 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            Sync D1 Data
+          </button>
+        </div>
+
         {/* Active Case Banner */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 shadow-md">
           <div>
@@ -175,7 +238,7 @@ export default function Home() {
         </div>
 
         {/* Studio Visualizer (Collapsible) */}
-        {showVisualizer && (
+        {showVisualizer && visualizerGpu && visualizerClearance && (
           <GPUFitVisualizer
             gpu={visualizerGpu}
             pcCase={activeCase}
@@ -345,13 +408,19 @@ export default function Home() {
           </div>
         </div>
 
-        {/* GPU List View / Grid View Rendering */}
-        {sortedGpus.length > 0 ? (
+        {/* Loading Spinner or GPU Content */}
+        {isLoading ? (
+          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-16 text-center space-y-4 flex flex-col items-center justify-center">
+            <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
+            <div className="text-sm font-mono font-bold text-white">Connecting to Cloudflare D1 SQL Database...</div>
+            <p className="text-xs font-mono text-slate-400">Fetching GPU specs live from D1 Edge Endpoint (`/api/gpus`)</p>
+          </div>
+        ) : sortedGpus.length > 0 ? (
           viewLayout === 'table' ? (
             <GPUTableList
               gpus={sortedGpus}
               pcCase={activeCase}
-              visualizerGpuId={visualizerGpu.id}
+              visualizerGpuId={visualizerGpu?.id || ''}
               showVisualizer={showVisualizer}
               onSelectForVisualizer={handleSelectGpuForVisualizer}
               comparedGpus={comparedGpus}
@@ -364,7 +433,7 @@ export default function Home() {
                   key={gpu.id}
                   gpu={gpu}
                   clearance={clearance}
-                  isSelectedForVisualizer={visualizerGpu.id === gpu.id && showVisualizer}
+                  isSelectedForVisualizer={visualizerGpu?.id === gpu.id && showVisualizer}
                   onSelectForVisualizer={handleSelectGpuForVisualizer}
                   isCompared={comparedGpus.some((g) => g.id === gpu.id)}
                   onToggleCompare={handleToggleCompare}
@@ -374,7 +443,10 @@ export default function Home() {
           )
         ) : (
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-12 text-center space-y-3">
-            <h4 className="text-base font-bold text-white">No GPUs match your selected filter criteria</h4>
+            <h4 className="text-base font-bold text-white">No GPU records found in Cloudflare D1 Database</h4>
+            <p className="text-xs font-mono text-slate-400">
+              Run <code className="text-cyan-400 bg-slate-950 px-2 py-1 rounded">npx wrangler d1 execute vgadream-db --remote --file=d1_seed.sql</code> to populate your D1 database.
+            </p>
             <button
               onClick={handleResetFilters}
               className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold font-mono transition-all"

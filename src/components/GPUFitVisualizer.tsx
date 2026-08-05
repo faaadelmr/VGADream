@@ -51,7 +51,7 @@ export const GPUFitVisualizer: React.FC<GPUFitVisualizerProps> = ({
             onClick={() => setEngineMode('3D')}
             className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
               engineMode === '3D'
-                ? 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-md'
+                ? 'bg-linear-to-r from-cyan-600 to-indigo-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
@@ -62,7 +62,7 @@ export const GPUFitVisualizer: React.FC<GPUFitVisualizerProps> = ({
             onClick={() => setEngineMode('2D')}
             className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
               engineMode === '2D'
-                ? 'bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white shadow-md'
+                ? 'bg-linear-to-r from-indigo-600 to-fuchsia-600 text-white shadow-md'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
