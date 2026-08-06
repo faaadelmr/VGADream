@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { parsePowerConnectors } from '@/utils/powerConnector';
+import { parseDisplayOutputs } from '@/utils/displayOutputs';
 import { CaseSpec, GPUSpec } from '@/types';
 
 interface GPUFitVisualizer3DProps {
@@ -15,35 +16,6 @@ interface GPUFitVisualizer3DProps {
   onRiserSlotOffsetChange?: (val: number) => void;
   userPsuWattage?: number;
   onUserPsuChange?: (wattage: number) => void;
-}
-
-// Dynamic parser to extract exact port types and counts from gpu.displayOutputs string
-function parseDisplayOutputs(outputsStr: string): Array<{ type: 'DP' | 'HDMI' | 'USBC'; label: string }> {
-  const ports: Array<{ type: 'DP' | 'HDMI' | 'USBC'; label: string }> = [];
-  if (!outputsStr) return ports;
-
-  const parts = outputsStr.split(',').map((s) => s.trim());
-
-  parts.forEach((part) => {
-    const match = part.match(/^(\d+)x\s+(.+)$/i);
-    if (match) {
-      const count = parseInt(match[1], 10);
-      const name = match[2];
-
-      let type: 'DP' | 'HDMI' | 'USBC' = 'DP';
-      if (name.toUpperCase().includes('HDMI')) {
-        type = 'HDMI';
-      } else if (name.toUpperCase().includes('USB')) {
-        type = 'USBC';
-      }
-
-      for (let i = 0; i < count; i++) {
-        ports.push({ type, label: `${name} #${i + 1}` });
-      }
-    }
-  });
-
-  return ports;
 }
 
 export const GPUFitVisualizer3D: React.FC<GPUFitVisualizer3DProps> = ({

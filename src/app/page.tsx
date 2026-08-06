@@ -12,11 +12,15 @@ import { GPUCard } from '@/components/GPUCard';
 import { GPUTableList } from '@/components/GPUTableList';
 import { CaseSelectorModal } from '@/components/CaseSelectorModal';
 import { GPUCompareModal } from '@/components/GPUCompareModal';
-import { Database, Loader2, RefreshCw } from 'lucide-react';
+import { MasterCatalogModal } from '@/components/MasterCatalogModal';
+import { AddGPUModal } from '@/components/AddGPUModal';
+import { EditGPUModal } from '@/components/EditGPUModal';
+import { Database, Loader2, Plus, RefreshCw, Layers, Sparkles } from 'lucide-react';
 
 export default function Home() {
-  // 1. Core State & D1 Async Data Fetching
-  const [gpus, setGpus] = useState<GPUSpec[]>([]);
+  // 1. Core State & D1 Async Master Data Fetching
+  const [masterGpus, setMasterGpus] = useState<GPUSpec[]>([]);
+  const [dreamGpus, setDreamGpus] = useState<GPUSpec[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [dataSource, setDataSource] = useState<string>('cloudflare_d1');
 
@@ -44,9 +48,84 @@ export default function Home() {
   // 4. Modals & Compare
   const [isCaseModalOpen, setIsCaseModalOpen] = useState(false);
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
+  const [isAddGpuModalOpen, setIsAddGpuModalOpen] = useState(false);
+  const [isEditGpuModalOpen, setIsEditGpuModalOpen] = useState(false);
+  const [gpuToEdit, setGpuToEdit] = useState<GPUSpec | null>(null);
+  const [isMasterCatalogModalOpen, setIsMasterCatalogModalOpen] = useState(false);
   const [comparedGpus, setComparedGpus] = useState<GPUSpec[]>([]);
 
-  // Fetch GPUs from Cloudflare D1 API endpoint
+  // Load active Dream VGA List from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('dream_vga_list');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setDreamGpus(parsed);
+          if (parsed.length > 0) {
+            setVisualizerGpu(parsed[0]);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load dream_vga_list from localStorage:', e);
+    }
+  }, []);
+
+  // Helper to update & persist Dream VGA List
+  const updateDreamGpus = (newList: GPUSpec[]) => {
+    setDreamGpus(newList);
+    try {
+      localStorage.setItem('dream_vga_list', JSON.stringify(newList));
+    } catch (e) {
+      console.error('Failed to save dream_vga_list to localStorage:', e);
+    }
+    if (newList.length > 0 && !visualizerGpu) {
+      setVisualizerGpu(newList[0]);
+    }
+  };
+
+  const handleAddGpuToDreamList = (gpu: GPUSpec) => {
+    if (!dreamGpus.some((g) => g.id === gpu.id)) {
+      const newList = [...dreamGpus, gpu];
+      updateDreamGpus(newList);
+    }
+  };
+
+  const handleRemoveGpuFromDreamList = (gpuId: string) => {
+    const newList = dreamGpus.filter((g) => g.id !== gpuId);
+    updateDreamGpus(newList);
+    if (visualizerGpu?.id === gpuId) {
+      setVisualizerGpu(newList.length > 0 ? newList[0] : null);
+    }
+  };
+
+  const handleEditGpu = (gpu: GPUSpec) => {
+    setGpuToEdit(gpu);
+    setIsEditGpuModalOpen(true);
+  };
+
+  const handleDeleteGpu = async (gpuId: string) => {
+    try {
+      const res = await fetch('/api/gpus/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: gpuId })
+      });
+      if (res.ok) {
+        setMasterGpus((prev) => prev.filter((g) => g.id !== gpuId));
+        handleRemoveGpuFromDreamList(gpuId);
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to delete GPU specification.');
+      }
+    } catch (err) {
+      console.error('Delete GPU error:', err);
+      alert('Network error while deleting GPU.');
+    }
+  };
+
+  // Fetch GPUs from Cloudflare D1 API endpoint into Master Catalog
   const fetchGpusFromD1 = async () => {
     setIsLoading(true);
     try {
@@ -54,11 +133,8 @@ export default function Home() {
       if (res.ok) {
         const data = await res.json();
         if (data.gpus) {
-          setGpus(data.gpus);
+          setMasterGpus(data.gpus);
           setDataSource(data.source || 'cloudflare_d1');
-          if (data.gpus.length > 0) {
-            setVisualizerGpu(data.gpus[0]);
-          }
         }
       }
     } catch (err) {
@@ -102,15 +178,15 @@ export default function Home() {
     }
   };
 
-  // 5. Clearance evaluation
+  // 5. Clearance evaluation ONLY for GPUs in active Dream VGA List
   const evaluatedGpus = useMemo(() => {
-    return gpus.map((gpu) => {
+    return dreamGpus.map((gpu) => {
       const clearance = evaluateClearance(gpu, activeCase, {
         userPsuWattage
       });
       return { gpu, clearance };
     });
-  }, [gpus, activeCase, userPsuWattage]);
+  }, [dreamGpus, activeCase, userPsuWattage]);
 
   // Filtered GPUs
   const filteredGpus = useMemo(() => {
@@ -173,46 +249,21 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
-      {/* Navbar */}
+      {/* Navbar with Action Buttons integrated into Header */}
       <Navbar
         pcCase={activeCase}
         onChangeCaseClick={() => setIsCaseModalOpen(true)}
         comparedCount={comparedGpus.length}
         onOpenCompareClick={() => setIsCompareModalOpen(true)}
+        onOpenMasterCatalog={() => setIsMasterCatalogModalOpen(true)}
+        dreamCount={dreamGpus.length}
+        masterCount={masterGpus.length}
+        onOpenAddGpu={() => setIsAddGpuModalOpen(true)}
+        onSyncD1={fetchGpusFromD1}
+        isSyncing={isLoading}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 flex-1 w-full">
-        {/* Cloudflare D1 Database Connection Banner */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 shadow-md backdrop-blur-xl">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-cyan-950/60 border border-cyan-800/50 text-cyan-400">
-              <Database className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-                  Cloudflare D1 Database Connection
-                </span>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950 border border-emerald-800 text-emerald-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5" />
-                  Active Endpoint
-                </span>
-              </div>
-              <p className="text-xs font-mono text-slate-400 mt-0.5">
-                Fetching live GPU records directly from Cloudflare D1 SQL database Edge binding (`/api/gpus`).
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={fetchGpusFromD1}
-            disabled={isLoading}
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-mono font-bold transition-all border border-slate-700 disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            Sync D1 Data
-          </button>
-        </div>
 
         {/* Active Case Banner */}
         <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 shadow-md">
@@ -412,8 +463,8 @@ export default function Home() {
         {isLoading ? (
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-16 text-center space-y-4 flex flex-col items-center justify-center">
             <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
-            <div className="text-sm font-mono font-bold text-white">Connecting to Cloudflare D1 SQL Database...</div>
-            <p className="text-xs font-mono text-slate-400">Fetching GPU specs live from D1 Edge Endpoint (`/api/gpus`)</p>
+            <div className="text-sm font-mono font-bold text-white">Connecting to GPU Master Catalog Database...</div>
+            <p className="text-xs font-mono text-slate-400">Fetching GPU specifications live from API endpoint (`/api/gpus`)</p>
           </div>
         ) : sortedGpus.length > 0 ? (
           viewLayout === 'table' ? (
@@ -442,16 +493,20 @@ export default function Home() {
             </div>
           )
         ) : (
-          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-12 text-center space-y-3">
-            <h4 className="text-base font-bold text-white">No GPU records found in Cloudflare D1 Database</h4>
-            <p className="text-xs font-mono text-slate-400">
-              Run <code className="text-cyan-400 bg-slate-950 px-2 py-1 rounded">npx wrangler d1 execute vgadream-db --remote --file=d1_seed.sql</code> to populate your D1 database.
+          <div className="bg-slate-900/80 border border-slate-800 rounded-3xl p-10 sm:p-14 text-center space-y-4 max-w-3xl mx-auto shadow-2xl backdrop-blur-xl my-8">
+            <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex items-center justify-center mx-auto shadow-[0_0_25px_rgba(6,182,212,0.2)]">
+              <Layers className="w-8 h-8" />
+            </div>
+            <h3 className="text-xl font-bold text-white">Your Dream VGA List is Currently Empty</h3>
+            <p className="text-sm text-slate-400 max-w-lg mx-auto leading-relaxed">
+              Master Catalog contains <strong>{masterGpus.length} GPUs</strong>. Select &amp; add your dream graphics cards to this <strong>Dream VGA List</strong> to evaluate PC case fit clearance!
             </p>
             <button
-              onClick={handleResetFilters}
-              className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold font-mono transition-all"
+              onClick={() => setIsMasterCatalogModalOpen(true)}
+              className="px-5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-cyan-500/50 text-slate-200 hover:text-white font-medium text-xs transition-all shadow-md inline-flex items-center gap-2 cursor-pointer"
             >
-              Reset Filters
+              <Sparkles className="w-4 h-4 text-cyan-400" />
+              Open Master Catalog &amp; Select GPUs ({masterGpus.length} Available)
             </button>
           </div>
         )}
@@ -482,6 +537,29 @@ export default function Home() {
       )}
 
       {/* Modals */}
+      <MasterCatalogModal
+        isOpen={isMasterCatalogModalOpen}
+        onClose={() => setIsMasterCatalogModalOpen(false)}
+        masterGpus={masterGpus}
+        dreamGpus={dreamGpus}
+        onAddGpuToDreamList={handleAddGpuToDreamList}
+        onRemoveGpuFromDreamList={handleRemoveGpuFromDreamList}
+        onOpenAddModal={() => setIsAddGpuModalOpen(true)}
+        onEditGpu={handleEditGpu}
+        onDeleteGpu={handleDeleteGpu}
+        activeCase={activeCase}
+      />
+
+      <EditGPUModal
+        isOpen={isEditGpuModalOpen}
+        gpuToEdit={gpuToEdit}
+        onClose={() => {
+          setIsEditGpuModalOpen(false);
+          setGpuToEdit(null);
+        }}
+        onGpuUpdated={fetchGpusFromD1}
+      />
+
       <CaseSelectorModal
         isOpen={isCaseModalOpen}
         onClose={() => setIsCaseModalOpen(false)}
@@ -495,6 +573,12 @@ export default function Home() {
         comparedGpus={comparedGpus}
         pcCase={activeCase}
         onRemoveFromCompare={(id) => setComparedGpus(comparedGpus.filter((g) => g.id !== id))}
+      />
+
+      <AddGPUModal
+        isOpen={isAddGpuModalOpen}
+        onClose={() => setIsAddGpuModalOpen(false)}
+        onGpuAdded={fetchGpusFromD1}
       />
 
       <Footer />

@@ -25,6 +25,16 @@ export function parsePowerConnectors(connector: string): PowerConnectorSpec {
 
   const norm = connector.replace(/\s+/g, '').toLowerCase();
 
+  // Check if GPU requires NO external power pin (PCIe Slot Only)
+  if (norm.includes('pcieslot') || norm.includes('nopin') || norm.includes('slotonly') || norm.includes('nopowerpin') || norm.includes('none')) {
+    return {
+      items: [],
+      count: 0,
+      totalPins: 0,
+      label: 'PCIe Slot Only (No Pin)'
+    };
+  }
+
   // 12VHPWR / 12V-2x6 / 16-pin
   if (norm.includes('12vhpwr') || norm.includes('12v-2x6') || norm.includes('16-pin')) {
     return {
@@ -57,10 +67,10 @@ export function parsePowerConnectors(connector: string): PowerConnectorSpec {
     if (norm.includes('8-pin') && norm.includes('6-pin')) {
       items.push({ type: '8-pin', cols: 4, hasSense: false, pinCount: 8 });
       items.push({ type: '6-pin', cols: 3, hasSense: false, pinCount: 6 });
+    } else if (norm.includes('8-pin')) {
+      items.push({ type: '8-pin', cols: 4, hasSense: false, pinCount: 8 });
     } else if (norm.includes('6-pin')) {
       items.push({ type: '6-pin', cols: 3, hasSense: false, pinCount: 6 });
-    } else {
-      items.push({ type: '8-pin', cols: 4, hasSense: false, pinCount: 8 });
     }
   }
 
