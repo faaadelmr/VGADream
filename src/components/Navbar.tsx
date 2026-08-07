@@ -1,6 +1,6 @@
 import React from 'react';
 import { CaseSpec } from '@/types';
-import { Sparkles, Plus, RefreshCw, Database } from 'lucide-react';
+import { Sparkles, Plus, RefreshCw, Box } from 'lucide-react';
 
 interface NavbarProps {
   pcCase: CaseSpec;
@@ -43,8 +43,20 @@ export const Navbar: React.FC<NavbarProps> = ({
             </span>
           </div>
 
-          {/* Center/Right: GPU Catalog & Dream List Buttons in Header */}
+          {/* Center/Right: Target Case Button & GPU Catalog Buttons in Header */}
           <div className="flex items-center gap-2 overflow-x-auto py-1 scrollbar-none">
+            {/* Change Target Case Button in Header */}
+            <button
+              onClick={onChangeCaseClick}
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold font-mono transition-all shrink-0 cursor-pointer shadow-md shadow-cyan-600/20"
+            >
+              <Box className="w-3.5 h-3.5" />
+              <span>Change Target Case</span>
+              <span className="px-1.5 py-0.5 rounded bg-cyan-950/80 text-cyan-200 text-[10px] font-normal">
+                {pcCase.name}
+              </span>
+            </button>
+
             {/* Primary Action: Open Master GPU Catalog */}
             <button
               onClick={onOpenMasterCatalog}
@@ -57,7 +69,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </span>
             </button>
 
-            {/* Secondary Action: Scrape / Add GPU */}
+            {/* Secondary Action: Add GPU Spec */}
             <button
               onClick={onOpenAddGpu}
               className="hidden md:flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-mono font-medium transition-all border border-slate-800 shrink-0"
@@ -76,34 +88,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               <RefreshCw className={`w-3 h-3 text-cyan-400 ${isSyncing ? 'animate-spin' : ''}`} />
               <span>Sync Master ({masterCount})</span>
             </button>
-          </div>
-
-          {/* Right Action Controls */}
-          <div className="flex items-center space-x-2 shrink-0">
-            {/* Active PC Case Selector Button */}
-            <button
-              onClick={onChangeCaseClick}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-cyan-500/50 text-xs font-mono text-slate-300 hover:text-white transition-all group shadow-sm"
-            >
-              <span className="text-slate-500 group-hover:text-cyan-400 hidden xl:inline">Target Case:</span>
-              <span className="font-bold text-cyan-400 group-hover:underline max-w-[100px] sm:max-w-none truncate">{pcCase.name}</span>
-              <span className="text-[10px] text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded hidden sm:inline">
-                Max {pcCase.maxGpuLengthMm}mm
-              </span>
-            </button>
-
-            {/* Compare Matrix Trigger Button */}
-            {comparedCount > 0 && (
-              <button
-                onClick={onOpenCompareClick}
-                className="relative px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-fuchsia-600 hover:from-indigo-500 hover:to-fuchsia-500 text-white font-bold text-xs font-mono shadow-lg shadow-indigo-500/25 transition-all flex items-center space-x-1.5 animate-pulse"
-              >
-                <span className="hidden sm:inline">Compare</span>
-                <span className="w-4 h-4 rounded-full bg-white text-indigo-950 flex items-center justify-center text-[10px] font-extrabold">
-                  {comparedCount}
-                </span>
-              </button>
-            )}
           </div>
         </div>
       </div>

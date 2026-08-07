@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { CaseSpec, ClearanceResult, GPUSpec } from '@/types';
 import { GPUFitVisualizer3D } from './GPUFitVisualizer3D';
 import { GPUFitVisualizer2D } from './GPUFitVisualizer2D';
-import { Box, Layers, Columns } from 'lucide-react';
+import { Box, Layers } from 'lucide-react';
 
 interface GPUFitVisualizerProps {
   gpu: GPUSpec;
@@ -12,6 +12,7 @@ interface GPUFitVisualizerProps {
   clearance: ClearanceResult;
   userPsuWattage: number;
   onUserPsuChange: (wattage: number) => void;
+  onChangeCaseClick?: () => void;
 }
 
 export const GPUFitVisualizer: React.FC<GPUFitVisualizerProps> = ({
@@ -19,12 +20,11 @@ export const GPUFitVisualizer: React.FC<GPUFitVisualizerProps> = ({
   pcCase,
   clearance,
   userPsuWattage,
-  onUserPsuChange
+  onUserPsuChange,
 }) => {
   const [viewMode, setViewMode] = useState<'3d' | '2d' | 'split'>('3d');
   const [riserSlotOffsetMm, setRiserSlotOffsetMm] = useState<number>(50);
 
-  const psuDifference = userPsuWattage - gpu.recommendedPsuW;
   const isCompatible = clearance.status !== 'INCOMPATIBLE';
 
   return (
@@ -38,12 +38,18 @@ export const GPUFitVisualizer: React.FC<GPUFitVisualizerProps> = ({
             </span>
             <span className="text-slate-500 text-xs font-mono">&bull; Active Target</span>
           </div>
-          <h2 className="text-lg sm:text-xl font-bold text-white mt-1">
-            {gpu.name}{' '}
+
+          {/* Main Title & Case Spec Info Inline */}
+          <h2 className="text-lg sm:text-xl font-bold text-white mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>{gpu.name}</span>
             <span className="text-slate-400 font-normal text-sm sm:text-base">
               in {pcCase.name} ({pcCase.brand})
             </span>
           </h2>
+
+          <div className="text-xs font-mono text-slate-400 mt-1">
+            Max Length: <span className="text-cyan-300 font-bold">{pcCase.maxGpuLengthMm} mm</span> &bull; Max Height: <span className="text-indigo-300 font-bold">{pcCase.maxGpuHeightMm} mm</span> &bull; Max Slot: <span className="text-fuchsia-300 font-bold">{pcCase.maxGpuSlotThickness} Slots</span>
+          </div>
         </div>
 
         {/* View Switcher Controls (3D Studio vs 2D Blueprint) */}
@@ -100,50 +106,6 @@ export const GPUFitVisualizer: React.FC<GPUFitVisualizerProps> = ({
           />
         </div>
       )}
-
-      {/* Fitness Callout Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 font-mono text-xs">
-        <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 space-y-1">
-          <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Dimensions (L &times; H &times; W)</div>
-          <div className="text-sm font-bold text-cyan-400">
-            {gpu.lengthMm} &times; {gpu.heightMm} &times; {gpu.thicknessMm} mm
-          </div>
-          <div className="text-[10px] text-slate-400">Max Case Length: <strong className="text-white">{pcCase.maxGpuLengthMm} mm</strong></div>
-        </div>
-
-        <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 space-y-1">
-          <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Length Margin</div>
-          <div
-            className={`text-sm font-bold ${
-              clearance.lengthMarginMm >= 0 ? 'text-emerald-400' : 'text-rose-400'
-            }`}
-          >
-            {clearance.lengthMarginMm >= 0 ? `+${clearance.lengthMarginMm} mm` : `${clearance.lengthMarginMm} mm`}
-          </div>
-          <div className="text-[10px] text-slate-400">
-            {clearance.lengthMarginMm >= 0 ? 'Clearance Passed' : 'Overlength Collision'}
-          </div>
-        </div>
-
-        <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 space-y-1">
-          <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Slot Thickness</div>
-          <div className="text-sm font-bold text-fuchsia-400">
-            {gpu.slotThickness} Slots ({gpu.thicknessMm} mm)
-          </div>
-          <div className="text-[10px] text-slate-400">Case Max Slots: <strong className="text-white">{pcCase.maxGpuSlotThickness} Slots</strong></div>
-        </div>
-
-        <div className="bg-slate-950/80 p-3.5 rounded-xl border border-slate-800 space-y-1">
-          <div className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Power Connector &amp; PSU</div>
-          <div className="text-xs font-bold text-amber-400 truncate">
-            {gpu.powerConnector} ({gpu.tdpWatts})
-          </div>
-          <div className="text-[10px] text-slate-400">
-            PSU Setup: <strong className={psuDifference >= 0 ? 'text-emerald-400' : 'text-rose-400'}>{userPsuWattage}W ({psuDifference >= 0 ? `+${psuDifference}W` : `${psuDifference}W`})</strong>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
-

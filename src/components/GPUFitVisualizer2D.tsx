@@ -187,14 +187,7 @@ export const GPUFitVisualizer2D: React.FC<GPUFitVisualizer2DProps> = ({
 
       {/* Main 2D Schematic Canvas Surface */}
       <div className="relative rounded-2xl bg-gradient-to-b from-slate-950 via-slate-900/90 to-slate-950 border border-slate-800/80 p-4 sm:p-6 overflow-hidden">
-        {/* Subtle CAD Blueprint Grid Background */}
-        <div
-          className="absolute inset-0 pointer-events-none opacity-25"
-          style={{
-            backgroundImage: `linear-gradient(to right, #1e293b 1px, transparent 1px), linear-gradient(to bottom, #1e293b 1px, transparent 1px)`,
-            backgroundSize: '20px 20px'
-          }}
-        />
+        {/* Main 2D Blueprint Canvas Surface */}
 
         <div className="relative z-10 space-y-8">
           {/* ============================================================ */}
@@ -202,15 +195,6 @@ export const GPUFitVisualizer2D: React.FC<GPUFitVisualizer2DProps> = ({
           {/* ============================================================ */}
           {activeSubView === 'top' && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 font-mono text-xs">
-                <div className="flex items-center space-x-2 text-cyan-400 font-bold uppercase tracking-wider">
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
-                  <span>TOP VIEW CAD &mdash; {fanCount} Fan(s), {pcieSpec.lanes} Slot, {displayPorts.length} Ports ({gpu.displayOutputs || 'Standard'})</span>
-                </div>
-                <div className="text-slate-400 text-[11px]">
-                  PCIe Spec: <strong className="text-amber-400">{pcieSpec.label}</strong> ({pcieSpec.pins} pins)
-                </div>
-              </div>
 
               {/* Top View Vector SVG */}
               <div className="w-full overflow-x-auto py-2">
@@ -246,6 +230,24 @@ export const GPUFitVisualizer2D: React.FC<GPUFitVisualizer2DProps> = ({
                       <stop offset="0%" stopColor="rgba(15, 23, 42, 0.4)" />
                       <stop offset="100%" stopColor="rgba(30, 41, 59, 0.2)" />
                     </linearGradient>
+
+                    {/* SVG 50mm Blueprint Grid Pattern (100% Mathematically Scaled to mmToPx) */}
+                    <pattern
+                      id="grid50mmPatternTop"
+                      width={50 * mmToPx}
+                      height={50 * mmToPx}
+                      patternUnits="userSpaceOnUse"
+                      x={20}
+                      y={0}
+                    >
+                      <path
+                        d={`M ${50 * mmToPx} 0 L 0 0 0 ${50 * mmToPx}`}
+                        fill="none"
+                        stroke="#0e7490"
+                        strokeWidth="0.8"
+                        opacity="0.4"
+                      />
+                    </pattern>
                   </defs>
 
                   {/* Dynamic Height Scale Calculations for Top View (Bottom fixed at y=180 for PCIe slot) */}
@@ -261,6 +263,8 @@ export const GPUFitVisualizer2D: React.FC<GPUFitVisualizer2DProps> = ({
 
                     return (
                       <g id="top-view-assembly">
+                        {/* Background 50mm Grid Pattern linked directly to mm scale */}
+                        <rect x={0} y={0} width={svgWidth} height={260} fill="url(#grid50mmPatternTop)" />
                         {/* 1. PROMINENT PC CASE BLUEPRINT ENCLOSURE BOX (Bottom fixed at PCIe slot y=180, Top shows height gap) */}
                         <g id="pc-case-enclosure-top">
                           {/* PC Case Chamber Outer Frame */}
@@ -299,15 +303,7 @@ export const GPUFitVisualizer2D: React.FC<GPUFitVisualizer2DProps> = ({
                             CASE FRONT WALL
                           </text>
 
-                          {/* PC Case Maximum Length Boundary Line */}
-                          <line
-                            x1={20 + caseLengthPx}
-                            y1={15}
-                            x2={20 + caseLengthPx}
-                            y2={228}
-                            stroke={clearance.lengthMarginMm >= 0 ? '#10b981' : '#f43f5e'}
-                            strokeWidth="2"
-                          />
+
 
                           {/* PC Case Max Length Bottom Header Label (Centered under Case Box) */}
                           {(() => {
@@ -343,13 +339,13 @@ export const GPUFitVisualizer2D: React.FC<GPUFitVisualizer2DProps> = ({
                           })()}
                         </g>
 
-                        {/* 2. REAR I/O BRACKET (PCIe Mounting Plate) WITH DYNAMIC DISPLAY PORTS */}
+                        {/* 2. REAR I/O BRACKET (Standard GPU PCIe Mounting Plate) WITH DYNAMIC DISPLAY PORTS */}
                         <g id="rear-io-bracket">
                           <rect
                             x={10}
-                            y={Math.min(yCaseTop, yGpuTop) - 5}
+                            y={yGpuTop - 6}
                             width={10}
-                            height={yBottom - Math.min(yCaseTop, yGpuTop) + 10}
+                            height={gpuHeightPx + 10}
                             rx={2}
                             fill="#94a3b8"
                             stroke="#475569"
@@ -357,10 +353,8 @@ export const GPUFitVisualizer2D: React.FC<GPUFitVisualizer2DProps> = ({
                           />
                           {/* Dynamic DisplayPort / HDMI / USB-C Cutouts from Database */}
                           {displayPorts.map((port, pIdx) => {
-                            const bracketTop = Math.min(yCaseTop, yGpuTop);
-                            const bracketHeight = yBottom - bracketTop;
-                            const step = bracketHeight / (displayPorts.length + 1);
-                            const portY = bracketTop + step * (pIdx + 1) - 6;
+                            const step = (gpuHeightPx + 10) / (displayPorts.length + 1);
+                            const portY = (yGpuTop - 6) + step * (pIdx + 1) - 6;
 
                             const portColor =
                               port.type === 'HDMI'
@@ -703,16 +697,7 @@ export const GPUFitVisualizer2D: React.FC<GPUFitVisualizer2DProps> = ({
 
                       return (
                         <g id="height-clearance-callouts-top">
-                          {/* Top Case Height Limit Boundary Line (Horizontal Dashed Line at yCaseTop) */}
-                          <line
-                            x1={20}
-                            y1={yCaseTop}
-                            x2={20 + caseLengthPx}
-                            y2={yCaseTop}
-                            stroke={heightMarginMm >= 0 ? '#10b981' : '#f43f5e'}
-                            strokeWidth="1.5"
-                            strokeDasharray="4,4"
-                          />
+
 
                           {/* Case Max Height Limit Badge attached to Top Boundary Line */}
                           <g transform={`translate(20, ${Math.max(2, yCaseTop - 20)})`}>
@@ -735,7 +720,7 @@ export const GPUFitVisualizer2D: React.FC<GPUFitVisualizer2DProps> = ({
                               fontWeight="bold"
                               textAnchor="middle"
                             >
-                              BATAS TINGGI CASE: {pcCase.maxGpuHeightMm}mm
+                              BATAS LEBAR CASE: {pcCase.maxGpuHeightMm}mm
                             </text>
                           </g>
 
@@ -780,14 +765,14 @@ export const GPUFitVisualizer2D: React.FC<GPUFitVisualizer2DProps> = ({
                             <g transform={`translate(${Math.max(175, Math.min(20 + gpuLengthPx / 2 - 85, svgWidth - 190))}, ${heightGapPx >= 16 ? yCaseTop + heightGapPx / 2 - 9 : Math.max(2, yCaseTop - 20)})`}>
                               <rect x={0} y={0} width={170} height={18} rx={4} fill="#064e3b" stroke="#10b981" strokeWidth="1.5" />
                               <text x={85} y={12} fill="#34d399" fontSize="8.5" fontFamily="monospace" fontWeight="extrabold" textAnchor="middle">
-                                SISA TINGGI: +{heightMarginMm} mm (AMAN)
+                                SISA LEBAR: +{heightMarginMm} mm (AMAN)
                               </text>
                             </g>
                           ) : (
                             <g transform={`translate(${Math.max(175, Math.min(20 + gpuLengthPx / 2 - 100, svgWidth - 210))}, ${Math.max(2, yCaseTop - 20)})`}>
                               <rect x={0} y={0} width={200} height={18} rx={4} fill="#4c0519" stroke="#f43f5e" strokeWidth="1.5" />
                               <text x={100} y={12} fill="#f87171" fontSize="8.5" fontFamily="monospace" fontWeight="extrabold" textAnchor="middle">
-                                TABRAKAN TINGGI: {heightMarginMm} mm (TIDAK MUAT)
+                                TABRAKAN LEBAR: {heightMarginMm} mm (TIDAK MUAT)
                               </text>
                             </g>
                           )}
@@ -801,24 +786,14 @@ export const GPUFitVisualizer2D: React.FC<GPUFitVisualizer2DProps> = ({
           )}
 
           {/* ============================================================ */}
-          {/* SIDE VIEW SCHEMATIC (GPU Branding Name & Power Pin Sockets)  */}
+          {/* SIDE VIEW SCHEMATIC (Panjang x Tebal Slot: Shroud & Power)   */}
           {/* ============================================================ */}
           {activeSubView === 'side' && (
             <div className="space-y-4 pt-2">
-              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2 font-mono text-xs">
-                <div className="flex items-center space-x-2 text-amber-400 font-bold uppercase tracking-wider">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24]" />
-                  <span>SIDE VIEW CAD &mdash; Shroud Branding Name, Power Sockets &amp; Case Height Limits</span>
-                </div>
-                <div className="text-slate-400 text-[11px]">
-                  Power Config: <strong className="text-amber-400">{gpu.powerConnector}</strong> ({gpu.tdpWatts})
-                </div>
-              </div>
-
               {/* Side View Vector SVG */}
               <div className="w-full overflow-x-auto py-2">
                 <svg
-                  viewBox={`0 0 ${svgWidth} 220`}
+                  viewBox={`0 0 ${svgWidth} 260`}
                   className="w-full max-w-full h-auto drop-shadow-2xl"
                   style={{ minWidth: '640px' }}
                 >
@@ -839,255 +814,383 @@ export const GPUFitVisualizer2D: React.FC<GPUFitVisualizer2DProps> = ({
                       <stop offset="50%" stopColor="#f59e0b" />
                       <stop offset="100%" stopColor="#78350f" />
                     </linearGradient>
+
+                    {/* SVG 50mm Blueprint Grid Pattern (100% Mathematically Scaled to mmToPx) */}
+                    <pattern
+                      id="grid50mmPatternSide"
+                      width={50 * mmToPx}
+                      height={50 * mmToPx}
+                      patternUnits="userSpaceOnUse"
+                      x={20}
+                      y={0}
+                    >
+                      <path
+                        d={`M ${50 * mmToPx} 0 L 0 0 0 ${50 * mmToPx}`}
+                        fill="none"
+                        stroke="#0e7490"
+                        strokeWidth="0.8"
+                        opacity="0.4"
+                      />
+                    </pattern>
                   </defs>
 
-                  {/* 1. PC CASE BLUEPRINT SLOT THICKNESS ENCLOSURE BOX */}
-                  <g id="pc-case-enclosure-side">
-                    {/* Case Max Length Frame */}
-                    <rect
-                      x={20}
-                      y={45}
-                      width={caseLengthPx}
-                      height={120}
-                      rx={6}
-                      fill="none"
-                      stroke={clearance.lengthMarginMm >= 0 ? '#10b981' : '#f43f5e'}
-                      strokeWidth="1.5"
-                      strokeDasharray="6,4"
-                      opacity="0.6"
-                    />
-
-                    {/* Side Panel Cable Clearance Upper Limit */}
-                    <line x1={20} y1={20} x2={20 + caseLengthPx} y2={20} stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="4,4" />
-                    <text x={25} y={14} fill="#fbbf24" fontSize="9" fontFamily="monospace" fontWeight="bold" textAnchor="start">
-                      BATAS PANEL SAMPING CASE (KABEL CLEARANCE)
-                    </text>
-                  </g>
-
-                  {/* 2. REAR I/O BRACKET SIDE PROFILE WITH DYNAMIC DISPLAY PORTS */}
-                  <g id="rear-io-bracket-side">
-                    <rect x={10} y={45} width={10} height={120} rx={2} fill="#64748b" stroke="#334155" strokeWidth="1" />
-                    <rect x={5} y={40} width={15} height={6} fill="#475569" rx={1} />
-                    <rect x={5} y={164} width={15} height={6} fill="#475569" rx={1} />
-
-                    {/* Dynamic Port Cutout Slots on Side Profile */}
-                    {displayPorts.map((port, pIdx) => {
-                      const step = 100 / (displayPorts.length + 1);
-                      const portY = 55 + step * (pIdx + 1) - 4;
-                      const portColor =
-                        port.type === 'HDMI'
-                          ? '#f59e0b'
-                          : port.type === 'USBC'
-                          ? '#a855f7'
-                          : port.type === 'DVI'
-                          ? '#94a3b8'
-                          : '#38bdf8';
-
-                      return (
-                        <g key={`side-port-${pIdx}`}>
-                          <rect
-                            x={6}
-                            y={portY}
-                            width={5}
-                            height={8}
-                            fill={portColor}
-                            stroke="#0f172a"
-                            strokeWidth="0.8"
-                            rx={1}
-                          />
-                        </g>
-                      );
-                    })}
-                  </g>
-
-                  {/* 3. COPPER HEATPIPES & COOLING FINS INSIDE SHROUD */}
-                  <g id="heatpipe-fins">
-                    {/* Heatsink Aluminum Fin Texture */}
-                    {Array.from({ length: Math.min(45, Math.floor(gpuLengthPx / 6)) }).map((_, finIdx) => (
-                      <line
-                        key={`fin-${finIdx}`}
-                        x1={25 + finIdx * 6}
-                        y1={55}
-                        x2={25 + finIdx * 6}
-                        y2={155}
-                        stroke="#334155"
-                        strokeWidth="1.2"
-                        opacity="0.7"
-                      />
-                    ))}
-
-                    {/* Copper Heatpipe Rods */}
-                    <rect x={30} y={80} width={gpuLengthPx - 20} height={6} rx={3} fill="url(#heatpipeGrad)" />
-                    <rect x={30} y={125} width={gpuLengthPx - 20} height={6} rx={3} fill="url(#heatpipeGrad)" />
-                  </g>
-
-                  {/* 4. MAIN SIDE SHROUD FRAME */}
-                  <rect
-                    x={20}
-                    y={48}
-                    width={gpuLengthPx}
-                    height={114}
-                    rx={6}
-                    fill="url(#sideShroudGrad)"
-                    stroke={accent.primary}
-                    strokeWidth="1.5"
-                  />
-
-                  {/* 5. ILLUMINATED GPU NAME & BRANDING TEXT (Auto-fitting Text & Box) */}
                   {(() => {
-                    const fullBrandStr = `${gpu.manufacturer} ${gpu.name}`.toUpperCase();
-                    const maxAvailableWidth = Math.max(120, gpuLengthPx - 40);
-                    const brandFontSize = fullBrandStr.length > 30 ? 9.5 : fullBrandStr.length > 22 ? 11 : 12.5;
-                    const charWidthPx = brandFontSize * 0.62;
-                    
-                    const brandBoxWidth = Math.min(maxAvailableWidth, Math.max(130, fullBrandStr.length * charWidthPx + 24));
-                    const maxChars = Math.floor((brandBoxWidth - 14) / charWidthPx);
-                    const displayBrandStr = fullBrandStr.length > maxChars ? `${fullBrandStr.slice(0, Math.max(6, maxChars - 1))}…` : fullBrandStr;
+                    const yBottom = 180;
+                    const gpuThicknessMm = gpu.thicknessMm || Math.round(gpu.slotThickness * 20);
+                    const caseMaxThicknessMm = pcCase.maxGpuThicknessMm || Math.round(pcCase.maxGpuSlotThickness * 20);
+                    const slotScale = 2.0;
+
+                    const gpuThicknessPx = Math.min(130, Math.max(40, gpuThicknessMm * slotScale));
+                    const caseThicknessPx = Math.min(150, Math.max(50, caseMaxThicknessMm * slotScale));
+
+                    const yGpuTop = yBottom - gpuThicknessPx;
+                    const yCaseTop = yBottom - caseThicknessPx;
+                    const thicknessGapPx = Math.abs(yGpuTop - yCaseTop);
+                    const thicknessMarginMm = clearance.thicknessMarginMm ?? (caseMaxThicknessMm - gpuThicknessMm);
+                    const slotMargin = clearance.slotMargin ?? Number((pcCase.maxGpuSlotThickness - gpu.slotThickness).toFixed(1));
+
+                    const midY = yGpuTop + gpuThicknessPx / 2;
+                    const shortChipset = gpu.chipset || gpu.name.replace(/^(Sapphire|MSI|ASUS|Gigabyte|ZOTAC|EVGA|PNY|XFX|PowerColor|GALAX|Inno3D|Gainward|Palit)\s+/i, '');
 
                     return (
-                      <g id="vga-branding-logo">
+                      <g id="side-view-assembly">
+                        {/* Background 50mm Grid Pattern linked directly to mm scale */}
+                        <rect x={0} y={0} width={svgWidth} height={260} fill="url(#grid50mmPatternSide)" />
+
+                        {/* 1. PC CASE BLUEPRINT SLOT THICKNESS ENCLOSURE BOX */}
+                        <g id="pc-case-enclosure-side">
+                          <rect
+                            x={20}
+                            y={yCaseTop}
+                            width={caseLengthPx}
+                            height={caseThicknessPx}
+                            rx={6}
+                            fill="url(#caseChamberGrad)"
+                            stroke={clearance.lengthMarginMm >= 0 ? '#10b981' : '#f43f5e'}
+                            strokeWidth="1.8"
+                            strokeDasharray="6,4"
+                          />
+
+                          {/* Case Front Wall */}
+                          <rect
+                            x={20 + caseLengthPx - 8}
+                            y={yCaseTop}
+                            width={8}
+                            height={caseThicknessPx}
+                            fill={clearance.lengthMarginMm >= 0 ? '#059669' : '#e11d48'}
+                            rx={2}
+                            opacity="0.8"
+                          />
+                          <text
+                            x={20 + caseLengthPx - 4}
+                            y={yCaseTop + caseThicknessPx / 2}
+                            fill="#ffffff"
+                            fontSize="9"
+                            fontFamily="monospace"
+                            fontWeight="bold"
+                            textAnchor="middle"
+                            transform={`rotate(-90, ${20 + caseLengthPx - 4}, ${yCaseTop + caseThicknessPx / 2})`}
+                          >
+                            CASE FRONT WALL
+                          </text>
+
+                          {/* Case Max Slot Thickness Limit Badge */}
+                          <g transform={`translate(20, ${Math.max(2, yCaseTop - 20)})`}>
+                            <rect
+                              x={0}
+                              y={0}
+                              width={220}
+                              height={18}
+                              rx={4}
+                              fill="#090d16"
+                              stroke={thicknessMarginMm >= 0 ? '#10b981' : '#f43f5e'}
+                              strokeWidth="1.5"
+                            />
+                            <text
+                              x={110}
+                              y={12}
+                              fill={thicknessMarginMm >= 0 ? '#34d399' : '#f87171'}
+                              fontSize="8.5"
+                              fontFamily="monospace"
+                              fontWeight="bold"
+                              textAnchor="middle"
+                            >
+                              BATAS TEBAL CASE: {caseMaxThicknessMm}mm ({pcCase.maxGpuSlotThickness}S)
+                            </text>
+                          </g>
+
+                          {/* Case Max Length Bottom Header Label */}
+                          {(() => {
+                            const caseBadgeText = `BATAS CASE: ${pcCase.maxGpuLengthMm} mm (${pcCase.name})`;
+                            const caseBadgeWidth = Math.min(360, Math.max(180, caseBadgeText.length * 7 + 24));
+                            const caseBadgeX = Math.max(10, Math.min(20 + caseLengthPx / 2 - caseBadgeWidth / 2, svgWidth - caseBadgeWidth - 10));
+
+                            return (
+                              <g transform={`translate(${caseBadgeX}, 232)`}>
+                                <rect
+                                  x={0}
+                                  y={0}
+                                  width={caseBadgeWidth}
+                                  height={22}
+                                  rx={5}
+                                  fill="#090d16"
+                                  stroke={clearance.lengthMarginMm >= 0 ? '#10b981' : '#f43f5e'}
+                                  strokeWidth="1.5"
+                                />
+                                <text
+                                  x={caseBadgeWidth / 2}
+                                  y={15}
+                                  fill={clearance.lengthMarginMm >= 0 ? '#34d399' : '#f87171'}
+                                  fontSize="9.5"
+                                  fontFamily="monospace"
+                                  fontWeight="bold"
+                                  textAnchor="middle"
+                                >
+                                  {caseBadgeText}
+                                </text>
+                              </g>
+                            );
+                          })()}
+                        </g>
+
+                        {/* 2. REAR I/O BRACKET (Standard GPU PCIe Mounting Plate) */}
+                        <g id="rear-io-bracket-side">
+                          <rect
+                            x={10}
+                            y={yGpuTop - 6}
+                            width={10}
+                            height={gpuThicknessPx + 10}
+                            fill="#64748b"
+                            stroke="#334155"
+                            strokeWidth="1"
+                            rx={2}
+                          />
+                        </g>
+
+                        {/* 3. COPPER HEATPIPES & COOLING FINS INSIDE SHROUD */}
+                        <g id="heatpipe-fins">
+                          {Array.from({ length: Math.min(40, Math.floor(gpuLengthPx / 7)) }).map((_, finIdx) => (
+                            <line
+                              key={`fin-${finIdx}`}
+                              x1={25 + finIdx * 7}
+                              y1={yGpuTop + 4}
+                              x2={25 + finIdx * 7}
+                              y2={yBottom - 4}
+                              stroke="#334155"
+                              strokeWidth="1.2"
+                              opacity="0.7"
+                            />
+                          ))}
+                          <rect x={30} y={yGpuTop + gpuThicknessPx * 0.35} width={gpuLengthPx - 20} height={4} rx={2} fill="url(#heatpipeGrad)" />
+                          <rect x={30} y={yGpuTop + gpuThicknessPx * 0.7} width={gpuLengthPx - 20} height={4} rx={2} fill="url(#heatpipeGrad)" />
+                        </g>
+
+                        {/* 4. MAIN SIDE SHROUD FRAME */}
                         <rect
-                          x={35}
-                          y={80}
-                          width={brandBoxWidth}
-                          height={36}
+                          x={20}
+                          y={yGpuTop}
+                          width={gpuLengthPx}
+                          height={gpuThicknessPx}
                           rx={6}
-                          fill="#020617"
+                          fill="url(#sideShroudGrad)"
                           stroke={accent.primary}
-                          strokeWidth="1.5"
+                          strokeWidth="1.8"
                         />
 
-                        {/* Illuminated Manufacturer & Model Name */}
-                        <text
-                          x={35 + brandBoxWidth / 2}
-                          y={102}
-                          fill="url(#rgbTextGrad)"
-                          fontSize={brandFontSize}
-                          fontFamily="sans-serif"
-                          fontWeight="900"
-                          letterSpacing="0.3"
-                          textAnchor="middle"
-                          className="drop-shadow-[0_0_8px_rgba(56,189,248,0.5)]"
-                        >
-                          {displayBrandStr}
-                        </text>
+                        {/* 5. GPU CHIPSET BRANDING TEXT ON SHROUD */}
+                        <g id="vga-branding-logo">
+                          <g transform={`translate(${20 + gpuLengthPx / 2 - Math.min(100, (gpuLengthPx - 20) / 2)}, ${yGpuTop + gpuThicknessPx / 2 - 10})`}>
+                            <rect
+                              x={0}
+                              y={0}
+                              width={Math.min(200, gpuLengthPx - 20)}
+                              height={20}
+                              rx={4}
+                              fill="#020617"
+                              stroke={accent.primary}
+                              strokeWidth="1"
+                            />
+                            <text
+                              x={Math.min(200, gpuLengthPx - 20) / 2}
+                              y={13.5}
+                              fill="url(#rgbTextGrad)"
+                              fontSize="9"
+                              fontFamily="sans-serif"
+                              fontWeight="900"
+                              letterSpacing="0.3"
+                              textAnchor="middle"
+                            >
+                              {shortChipset} ({gpu.slotThickness}S / {gpuThicknessMm}mm)
+                            </text>
+                          </g>
+                        </g>
+
+                        {/* 6. POWER PIN CONNECTOR ON TOP EDGE */}
+                        {!gpu.powerConnector.toLowerCase().includes('no pin') && !gpu.powerConnector.toLowerCase().includes('pcie slot') && (
+                          <g id="side-power-connector">
+                            <rect
+                              x={20 + gpuLengthPx - Math.min(95, gpuLengthPx * 0.4)}
+                              y={yGpuTop - 7}
+                              width={85}
+                              height={10}
+                              rx={2}
+                              fill="#090d16"
+                              stroke="#f59e0b"
+                              strokeWidth="1.2"
+                            />
+                            <text
+                              x={20 + gpuLengthPx - Math.min(95, gpuLengthPx * 0.4) + 42.5}
+                              y={yGpuTop + 1}
+                              fill="#fbbf24"
+                              fontSize="7.5"
+                              fontFamily="monospace"
+                              fontWeight="extrabold"
+                              textAnchor="middle"
+                            >
+                              ⚡ {gpu.powerConnector.replace('PCIe', '').replace('(12VHPWR)', '16-pin').trim()}
+                            </text>
+
+                            {/* Cable Bend Clearance Arrow +35mm */}
+                            <g id="cable-bend-clearance">
+                              <line
+                                x1={20 + gpuLengthPx - 45}
+                                y1={yGpuTop - 7}
+                                x2={20 + gpuLengthPx - 45}
+                                y2={yGpuTop - 25}
+                                stroke="#f59e0b"
+                                strokeWidth="1"
+                                strokeDasharray="2,2"
+                              />
+                              <polygon
+                                points={`${20 + gpuLengthPx - 48},${yGpuTop - 20} ${20 + gpuLengthPx - 45},${yGpuTop - 26} ${20 + gpuLengthPx - 42},${yGpuTop - 20}`}
+                                fill="#f59e0b"
+                              />
+                              <g transform={`translate(${Math.min(20 + gpuLengthPx - 105, svgWidth - 125)}, ${Math.max(5, yGpuTop - 38)})`}>
+                                <rect x={0} y={0} width={120} height={14} rx={3} fill="#090d16" stroke="#f59e0b" strokeWidth="0.8" />
+                                <text x={60} y={9.5} fill="#fef08a" fontSize="7.5" fontFamily="monospace" fontWeight="bold" textAnchor="middle">
+                                  Cable Clearance +35mm
+                                </text>
+                              </g>
+                            </g>
+                          </g>
+                        )}
+
+
+
+                        {/* 8. GPU LENGTH & TEBAL DIMENSION CALLOUTS WITH CAD INDICATOR LINES & TICKS */}
+                        <g id="dimension-callouts-side">
+                          {/* GPU Length Marker Line (Horizontal Top) */}
+                          <line x1={20} y1={10} x2={20 + gpuLengthPx} y2={10} stroke="#38bdf8" strokeWidth="1" />
+                          <line x1={20} y1={5} x2={20} y2={15} stroke="#38bdf8" strokeWidth="1" />
+                          <line x1={20 + gpuLengthPx} y1={5} x2={20 + gpuLengthPx} y2={15} stroke="#38bdf8" strokeWidth="1" />
+                          <g transform={`translate(${20 + gpuLengthPx / 2 - 80}, 1)`}>
+                            <rect x={0} y={0} width={160} height={18} rx={4} fill="#090d16" stroke="#38bdf8" strokeWidth="1.2" />
+                            <text x={80} y={12} fill="#38bdf8" fontSize="8.5" fontFamily="monospace" fontWeight="extrabold" textAnchor="middle">
+                              VGA PANJANG: {gpu.lengthMm} mm
+                            </text>
+                          </g>
+
+                          {/* Horizontal Clearance Line & End Ticks (SISA RUANG PANJANG) */}
+                          {marginMm >= 0 ? (
+                            <g>
+                              <line x1={20 + gpuLengthPx} y1={midY} x2={20 + caseLengthPx} y2={midY} stroke="#10b981" strokeWidth="2" strokeDasharray="3,3" />
+                              <line x1={20 + gpuLengthPx} y1={midY - 8} x2={20 + gpuLengthPx} y2={midY + 8} stroke="#10b981" strokeWidth="2" />
+                              <line x1={20 + caseLengthPx} y1={midY - 8} x2={20 + caseLengthPx} y2={midY + 8} stroke="#10b981" strokeWidth="2" />
+
+                              <g transform={`translate(${Math.max(20 + gpuLengthPx + 10, 20 + (caseLengthPx + gpuLengthPx) / 2 - 90)}, ${midY - 11})`}>
+                                <rect x={0} y={0} width={180} height={22} rx={5} fill="#022c22" stroke="#10b981" strokeWidth="1.5" />
+                                <text x={90} y={14.5} fill="#34d399" fontSize="8.5" fontFamily="monospace" fontWeight="extrabold" textAnchor="middle">
+                                  SISA RUANG: +{marginMm} mm (AMAN)
+                                </text>
+                              </g>
+                            </g>
+                          ) : (
+                            <g>
+                              <line x1={20 + caseLengthPx} y1={midY} x2={20 + gpuLengthPx} y2={midY} stroke="#f43f5e" strokeWidth="2" strokeDasharray="3,3" />
+                              <line x1={20 + caseLengthPx} y1={midY - 8} x2={20 + caseLengthPx} y2={midY + 8} stroke="#f43f5e" strokeWidth="2" />
+                              <line x1={20 + gpuLengthPx} y1={midY - 8} x2={20 + gpuLengthPx} y2={midY + 8} stroke="#f43f5e" strokeWidth="2" />
+
+                              <g transform={`translate(${Math.min(20 + caseLengthPx + 5, svgWidth - 210)}, ${midY - 11})`}>
+                                <rect x={0} y={0} width={200} height={22} rx={5} fill="#4c0519" stroke="#f43f5e" strokeWidth="1.5" />
+                                <text x={100} y={14.5} fill="#f87171" fontSize="8.5" fontFamily="monospace" fontWeight="extrabold" textAnchor="middle">
+                                  TABRAKAN: {marginMm} mm (TIDAK MUAT)
+                                </text>
+                              </g>
+                            </g>
+                          )}
+
+                          {/* Vertical Tebal Clearance Line & End Ticks (SISA TEBAL SLOT) */}
+                          {thicknessMarginMm >= 0 ? (
+                            <g>
+                              {thicknessGapPx >= 10 && (
+                                <g>
+                                  <line x1={Math.max(160, 20 + gpuLengthPx / 2)} y1={yCaseTop} x2={Math.max(160, 20 + gpuLengthPx / 2)} y2={yGpuTop} stroke="#10b981" strokeWidth="2" strokeDasharray="3,3" />
+                                  <line x1={Math.max(160, 20 + gpuLengthPx / 2) - 8} y1={yCaseTop} x2={Math.max(160, 20 + gpuLengthPx / 2) + 8} y2={yCaseTop} stroke="#10b981" strokeWidth="2" />
+                                  <line x1={Math.max(160, 20 + gpuLengthPx / 2) - 8} y1={yGpuTop} x2={Math.max(160, 20 + gpuLengthPx / 2) + 8} y2={yGpuTop} stroke="#10b981" strokeWidth="2" />
+                                </g>
+                              )}
+                              <g transform={`translate(${Math.max(175, Math.min(20 + gpuLengthPx / 2 - 95, svgWidth - 210))}, ${thicknessGapPx >= 16 ? yCaseTop + thicknessGapPx / 2 - 9 : Math.max(2, yCaseTop - 20)})`}>
+                                <rect x={0} y={0} width={190} height={18} rx={4} fill="#064e3b" stroke="#10b981" strokeWidth="1.5" />
+                                <text x={95} y={12} fill="#34d399" fontSize="8.5" fontFamily="monospace" fontWeight="extrabold" textAnchor="middle">
+                                  SISA TEBAL: +{thicknessMarginMm}mm / +{slotMargin}S (AMAN)
+                                </text>
+                              </g>
+                            </g>
+                          ) : (
+                            <g>
+                              <g transform={`translate(${Math.max(175, Math.min(20 + gpuLengthPx / 2 - 100, svgWidth - 210))}, ${Math.max(2, yCaseTop - 20)})`}>
+                                <rect x={0} y={0} width={200} height={18} rx={4} fill="#4c0519" stroke="#f43f5e" strokeWidth="1.5" />
+                                <text x={100} y={12} fill="#f87171" fontSize="8.5" fontFamily="monospace" fontWeight="extrabold" textAnchor="middle">
+                                  TABRAKAN TEBAL: {thicknessMarginMm} mm (TIDAK MUAT)
+                                </text>
+                              </g>
+                            </g>
+                          )}
+                        </g>
                       </g>
                     );
                   })()}
-
-                  {/* 6. POWER PIN CONNECTOR SOCKET LOCATION ON TOP EDGE */}
-                  <g id="side-power-connectors">
-                    {/* Socket Cutout Housing on Top Edge of Shroud */}
-                    <rect
-                      x={20 + gpuLengthPx - 110}
-                      y={42}
-                      width={90}
-                      height={14}
-                      rx={2}
-                      fill="#090d16"
-                      stroke="#f59e0b"
-                      strokeWidth="1.5"
-                    />
-
-                    <text
-                      x={20 + gpuLengthPx - 65}
-                      y={52}
-                      fill="#fbbf24"
-                      fontSize="9"
-                      fontFamily="monospace"
-                      fontWeight="bold"
-                      textAnchor="middle"
-                    >
-                      ⚡ POWER SOCKET
-                    </text>
-
-                    {/* Cable Routing Indicator Line & Power Plug Cable Clearance Arrow */}
-                    <path
-                      d={`M ${20 + gpuLengthPx - 65} 42 L ${20 + gpuLengthPx - 65} 24`}
-                      stroke="#fbbf24"
-                      strokeWidth="1.5"
-                      strokeDasharray="3,3"
-                    />
-                    <polygon
-                      points={`${20 + gpuLengthPx - 70},28 ${20 + gpuLengthPx - 65},20 ${20 + gpuLengthPx - 60},28`}
-                      fill="#fbbf24"
-                    />
-                    
-                    {/* Dark Pill Badge for Jarak Tekuk Kabel */}
-                    <g transform={`translate(${Math.min(20 + gpuLengthPx - 130, svgWidth - 145)}, 2)`}>
-                      <rect x={0} y={0} width={135} height={16} rx={4} fill="#090d16" stroke="#f59e0b" strokeWidth="1" />
-                      <text x={67.5} y={11} fill="#fef08a" fontSize="8.5" fontFamily="monospace" fontWeight="bold" textAnchor="middle">
-                        Jarak Tekuk Kabel (+35mm)
-                      </text>
-                    </g>
-                  </g>
-
-                  {/* 7. DIMENSION CALLOUTS (SLOT THICKNESS & HEIGHT) */}
-                  <g id="dimension-callouts-side">
-                    {/* Slot Thickness Label */}
-                    <rect
-                      x={Math.min(20 + gpuLengthPx + 10, svgWidth - 140)}
-                      y={85}
-                      width={130}
-                      height={24}
-                      rx={4}
-                      fill="#0f172a"
-                      stroke="#c084fc"
-                      strokeWidth="1.5"
-                    />
-                    <text
-                      x={Math.min(20 + gpuLengthPx + 10, svgWidth - 140) + 65}
-                      y={100}
-                      fill="#e9d5ff"
-                      fontSize="10"
-                      fontFamily="monospace"
-                      fontWeight="bold"
-                      textAnchor="middle"
-                    >
-                      {gpu.slotThickness} Slots ({gpu.thicknessMm}mm)
-                    </text>
-                  </g>
                 </svg>
-              </div>
-
-              {/* Physical Power Pin Socket Diagram Breakdown Card */}
-              <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Zap className="w-4 h-4 text-amber-400 animate-pulse" />
-                    <span className="text-xs font-bold text-white font-mono uppercase tracking-wider">
-                      Physical Power Socket Pin Diagram: <strong className="text-amber-400">{gpu.powerConnector}</strong>
-                    </span>
-                  </div>
-                  <span className="text-[11px] text-slate-400 font-mono">
-                    Total Pins: <strong className="text-white">{powerSpec.totalPins} Pins</strong> &bull; TDP: <strong className="text-amber-400">{gpu.tdpWatts}</strong>
-                  </span>
-                </div>
-
-                {/* Sockets Row Display */}
-                {powerSpec.items.length > 0 ? (
-                  <div className="flex flex-wrap items-center gap-4 py-1">
-                    {powerSpec.items.map((item, idx) => renderPowerSocket2D(item, idx))}
-                    <div className="text-xs text-slate-400 font-mono pl-2">
-                      {powerSpec.label.includes('16-pin') || powerSpec.label.includes('12VHPWR') ? (
-                        <p className="text-amber-300/90 text-[11px]">
-                          ⚡ <strong>16-Pin (12VHPWR / 12V-2x6)</strong> connector supports up to 600W power delivery. Requires 35mm cable clearance.
-                        </p>
-                      ) : (
-                        <p className="text-slate-300 text-[11px]">
-                          🔌 Standard 8-pin / 6-pin PCIe power socket layout for ATX power supply cables.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-xs text-slate-400 font-mono italic">
-                    This GPU relies solely on PCIe slot power (No external pin power socket required).
-                  </div>
-                )}
               </div>
             </div>
           )}
+
+          {/* Physical Power Pin Socket Diagram Breakdown Card */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Zap className="w-4 h-4 text-amber-400 animate-pulse" />
+                <span className="text-xs font-bold text-white font-mono uppercase tracking-wider">
+                  Physical Power Socket Pin Diagram: <strong className="text-amber-400">{gpu.powerConnector}</strong>
+                </span>
+              </div>
+              <span className="text-[11px] text-slate-400 font-mono">
+                Total Pins: <strong className="text-white">{powerSpec.totalPins} Pins</strong> &bull; TDP: <strong className="text-amber-400">{gpu.tdpWatts}</strong>
+              </span>
+            </div>
+
+            {/* Sockets Row Display */}
+            {powerSpec.items.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-4 py-1">
+                {powerSpec.items.map((item, idx) => renderPowerSocket2D(item, idx))}
+                <div className="text-xs text-slate-400 font-mono pl-2">
+                  {powerSpec.label.includes('16-pin') || powerSpec.label.includes('12VHPWR') ? (
+                    <p className="text-amber-300/90 text-[11px]">
+                      ⚡ <strong>16-Pin (12VHPWR / 12V-2x6)</strong> connector supports up to 600W power delivery. Requires 35mm cable clearance.
+                    </p>
+                  ) : (
+                    <p className="text-slate-300 text-[11px]">
+                      🔌 Standard 8-pin / 6-pin PCIe power socket layout for ATX power supply cables.
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="text-xs text-slate-400 font-mono italic">
+                This GPU relies solely on PCIe slot power (No external pin power socket required).
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

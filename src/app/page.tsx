@@ -265,29 +265,6 @@ export default function Home() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 flex-1 w-full">
 
-        {/* Active Case Banner */}
-        <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 shadow-md">
-          <div>
-            <div className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider">Active Target PC Case</div>
-            <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
-              {activeCase.brand} {activeCase.name}
-              <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-normal">
-                {activeCase.formFactor}
-              </span>
-            </h2>
-            <div className="text-xs font-mono text-slate-400 mt-0.5">
-              Max Length: <span className="text-cyan-300 font-bold">{activeCase.maxGpuLengthMm} mm</span> &bull; Max Height: <span className="text-indigo-300 font-bold">{activeCase.maxGpuHeightMm} mm</span> &bull; Max Slot: <span className="text-fuchsia-300 font-bold">{activeCase.maxGpuSlotThickness} Slots</span>
-            </div>
-          </div>
-
-          <button
-            onClick={() => setIsCaseModalOpen(true)}
-            className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold font-mono transition-all shadow-md shadow-cyan-600/20"
-          >
-            Change Target Case
-          </button>
-        </div>
-
         {/* Studio Visualizer (Collapsible) */}
         {showVisualizer && visualizerGpu && visualizerClearance && (
           <GPUFitVisualizer
@@ -296,6 +273,7 @@ export default function Home() {
             clearance={visualizerClearance}
             userPsuWattage={userPsuWattage}
             onUserPsuChange={setUserPsuWattage}
+            onChangeCaseClick={() => setIsCaseModalOpen(true)}
           />
         )}
 

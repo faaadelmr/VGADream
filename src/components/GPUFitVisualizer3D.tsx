@@ -6,6 +6,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { parsePowerConnectors } from '@/utils/powerConnector';
 import { parseDisplayOutputs } from '@/utils/displayOutputs';
 import { CaseSpec, GPUSpec } from '@/types';
+import { parseFanCount } from './GPUFitVisualizer2D';
 
 interface GPUFitVisualizer3DProps {
   gpu: GPUSpec;
@@ -345,7 +346,7 @@ export const GPUFitVisualizer3D: React.FC<GPUFitVisualizer3DProps> = ({
     gpuGroup.add(backplateMesh);
 
     // Cooling Fans — clearly on BOTTOM face (-Y) of shroud (facing down in horizontal mode)
-    const numFans = gpuW > 250 ? 3 : 2;
+    const numFans = parseFanCount(gpu);
     const fanRadius = Math.min(gpuD * 0.32, (gpuW / (numFans + 1)) * 0.42);
     const fanSpacing = gpuW / (numFans + 1);
     const fanBottomY = -2; // clearly below the shroud bottom face
