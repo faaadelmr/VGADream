@@ -17,14 +17,15 @@ import { AddGPUModal } from '@/components/AddGPUModal';
 import { EditGPUModal } from '@/components/EditGPUModal';
 import { AddCaseModal } from '@/components/AddCaseModal';
 import { EditCaseModal } from '@/components/EditCaseModal';
-import { Database, Loader2, Plus, RefreshCw, Layers, Sparkles } from 'lucide-react';
+import { SetPriceModal } from '@/components/SetPriceModal';
+import { Loader2, Layers, Sparkles } from 'lucide-react';
 
 export default function Home() {
   // 1. Core State & D1 Async Master Data Fetching
   const [masterGpus, setMasterGpus] = useState<GPUSpec[]>([]);
   const [dreamGpus, setDreamGpus] = useState<GPUSpec[]>([]);
+  const [gpuPrices, setGpuPrices] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [dataSource, setDataSource] = useState<string>('cloudflare_d1');
 
   const [activeCase, setActiveCase] = useState<CaseSpec>(INITIAL_CASES[0]); // Fractal Terra
   const [userPsuWattage, setUserPsuWattage] = useState<number>(750); // Default 750W PSU
@@ -32,6 +33,31 @@ export default function Home() {
   // 2. Visualizer visibility toggle & selected GPU
   const [showVisualizer, setShowVisualizer] = useState(false);
   const [visualizerGpu, setVisualizerGpu] = useState<GPUSpec | null>(null);
+
+  // Load active Dream VGA List and user custom GPU prices from localStorage after client mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        const saved = localStorage.getItem('dream_vga_list');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            setDreamGpus(parsed);
+            if (parsed.length > 0) {
+              setVisualizerGpu(parsed[0]);
+            }
+          }
+        }
+        const savedPrices = localStorage.getItem('vgadream_gpu_prices');
+        if (savedPrices) {
+          setGpuPrices(JSON.parse(savedPrices));
+        }
+      } catch (e) {
+        console.error('Failed to load local storage data:', e);
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, []);
 
   // View Layout Mode: 'table' (default) or 'grid'
   const [viewLayout, setViewLayout] = useState<'table' | 'grid'>('table');
@@ -45,7 +71,7 @@ export default function Home() {
   const [maxLengthFilter, setMaxLengthFilter] = useState(360);
   const [maxSlotFilter, setMaxSlotFilter] = useState(4.0);
   const [selectedManufacturers, setSelectedManufacturers] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState<'fit_score' | 'vram_desc' | 'time_spy_desc' | 'length_asc' | 'length_desc'>('fit_score');
+  const [sortBy, setSortBy] = useState<'fit_score' | 'price_perf_desc' | 'price_asc' | 'price_desc' | 'vram_desc' | 'time_spy_desc' | 'length_asc' | 'length_desc'>('fit_score');
 
   const [isCaseModalOpen, setIsCaseModalOpen] = useState(false);
   const [isAddCaseModalOpen, setIsAddCaseModalOpen] = useState(false);
@@ -54,31 +80,41 @@ export default function Home() {
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
   const [isAddGpuModalOpen, setIsAddGpuModalOpen] = useState(false);
   const [isEditGpuModalOpen, setIsEditGpuModalOpen] = useState(false);
+  const [isSetPriceModalOpen, setIsSetPriceModalOpen] = useState(false);
+  const [gpuForPrice, setGpuForPrice] = useState<GPUSpec | null>(null);
   const [gpuToEdit, setGpuToEdit] = useState<GPUSpec | null>(null);
   const [isMasterCatalogModalOpen, setIsMasterCatalogModalOpen] = useState(false);
   const [comparedGpus, setComparedGpus] = useState<GPUSpec[]>([]);
 
-  // Load active Dream VGA List from localStorage on mount
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('dream_vga_list');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          setDreamGpus(parsed);
-          if (parsed.length > 0) {
-            setVisualizerGpu(parsed[0]);
-          }
-        }
+  const handleOpenSetPrice = (gpu: GPUSpec) => {
+    setGpuForPrice(gpu);
+    setIsSetPriceModalOpen(true);
+  };
+
+  const handleSavePrice = (gpuId: string, priceIdr: number | undefined) => {
+    setGpuPrices((prev) => {
+      const next = { ...prev };
+      if (priceIdr !== undefined && priceIdr > 0) {
+        next[gpuId] = priceIdr;
+      } else {
+        delete next[gpuId];
       }
-    } catch (e) {
-      console.error('Failed to load dream_vga_list from localStorage:', e);
-    }
-  }, []);
+      try {
+        localStorage.setItem('vgadream_gpu_prices', JSON.stringify(next));
+      } catch (e) {
+        console.error('Failed to save vgadream_gpu_prices:', e);
+      }
+      return next;
+    });
+  };
+
+  const handleDeletePrice = (gpuId: string) => {
+    handleSavePrice(gpuId, undefined);
+  };
 
   const [allCases, setAllCases] = useState<CaseSpec[]>(INITIAL_CASES);
 
-  // Helper to fetch cases from database API + localStorage
+  // Helper to fetch cases from database API + localStorage (used after user updates)
   const fetchCasesFromD1 = async () => {
     try {
       const res = await fetch('/api/cases');
@@ -104,7 +140,35 @@ export default function Home() {
   };
 
   useEffect(() => {
-    fetchCasesFromD1();
+    let isMounted = true;
+    const loadCases = async () => {
+      try {
+        const res = await fetch('/api/cases');
+        const data = await res.json();
+        if (!isMounted) return;
+        const apiCases: CaseSpec[] = data.cases || [];
+
+        const saved = localStorage.getItem('vgadream_custom_cases');
+        const custom: CaseSpec[] = saved ? JSON.parse(saved) : [];
+        const deletedSaved = localStorage.getItem('vgadream_deleted_case_ids');
+        const deletedIds: string[] = deletedSaved ? JSON.parse(deletedSaved) : [];
+        const deletedSet = new Set(deletedIds);
+
+        const caseMap = new Map<string, CaseSpec>();
+        INITIAL_CASES.forEach((c) => caseMap.set(c.id, c));
+        apiCases.forEach((c) => caseMap.set(c.id, c));
+        custom.forEach((c) => caseMap.set(c.id, c));
+
+        const merged = Array.from(caseMap.values()).filter((c) => !deletedSet.has(c.id));
+        setAllCases(merged);
+      } catch (err) {
+        console.warn('Failed to fetch cases from API:', err);
+      }
+    };
+    loadCases();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Case Edit & Delete Handlers
@@ -246,7 +310,6 @@ export default function Home() {
         const data = await res.json();
         if (data.gpus) {
           setMasterGpus(data.gpus);
-          setDataSource(data.source || 'cloudflare_d1');
         }
       }
     } catch (err) {
@@ -257,7 +320,28 @@ export default function Home() {
   };
 
   useEffect(() => {
-    fetchGpusFromD1();
+    let isMounted = true;
+    const loadGpus = async () => {
+      try {
+        const res = await fetch('/api/gpus');
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data.gpus) {
+            setMasterGpus(data.gpus);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch GPUs from Cloudflare D1 API:', err);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+    loadGpus();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleResetFilters = () => {
@@ -290,15 +374,25 @@ export default function Home() {
     }
   };
 
-  // 5. Clearance evaluation ONLY for GPUs in active Dream VGA List
+  // 5. Clearance evaluation ONLY for GPUs in active Dream VGA List with custom prices
   const evaluatedGpus = useMemo(() => {
     return dreamGpus.map((gpu) => {
-      const clearance = evaluateClearance(gpu, activeCase, {
+      const priceIdr = gpuPrices[gpu.id] ?? gpu.priceIdr;
+      const gpuWithPrice = { ...gpu, priceIdr };
+      const clearance = evaluateClearance(gpuWithPrice, activeCase, {
         userPsuWattage
       });
-      return { gpu, clearance };
+      return { gpu: gpuWithPrice, clearance };
     });
-  }, [dreamGpus, activeCase, userPsuWattage]);
+  }, [dreamGpus, activeCase, userPsuWattage, gpuPrices]);
+
+  // Compared GPUs with attached user prices
+  const comparedGpusWithPrices = useMemo(() => {
+    return comparedGpus.map((gpu) => ({
+      ...gpu,
+      priceIdr: gpuPrices[gpu.id] ?? gpu.priceIdr
+    }));
+  }, [comparedGpus, gpuPrices]);
 
   // Filtered GPUs
   const filteredGpus = useMemo(() => {
@@ -335,6 +429,20 @@ export default function Home() {
     return [...filteredGpus].sort((a, b) => {
       if (sortBy === 'fit_score') {
         return b.clearance.score - a.clearance.score;
+      } else if (sortBy === 'price_perf_desc') {
+        const pMA = a.gpu.priceIdr ? a.gpu.priceIdr / 1_000_000 : 0;
+        const pMB = b.gpu.priceIdr ? b.gpu.priceIdr / 1_000_000 : 0;
+        const ppA = pMA > 0 ? a.gpu.timeSpyScore / pMA : 0;
+        const ppB = pMB > 0 ? b.gpu.timeSpyScore / pMB : 0;
+        return ppB - ppA;
+      } else if (sortBy === 'price_asc') {
+        const pA = a.gpu.priceIdr || Number.MAX_SAFE_INTEGER;
+        const pB = b.gpu.priceIdr || Number.MAX_SAFE_INTEGER;
+        return pA - pB;
+      } else if (sortBy === 'price_desc') {
+        const pA = a.gpu.priceIdr || 0;
+        const pB = b.gpu.priceIdr || 0;
+        return pB - pA;
       } else if (sortBy === 'vram_desc') {
         const vramA = parseInt(a.gpu.memorySize, 10) || 0;
         const vramB = parseInt(b.gpu.memorySize, 10) || 0;
@@ -530,12 +638,15 @@ export default function Home() {
               <span>Sort by:</span>
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as 'fit_score' | 'vram_desc' | 'time_spy_desc' | 'length_asc' | 'length_desc')}
+                onChange={(e) => setSortBy(e.target.value as 'fit_score' | 'price_perf_desc' | 'price_asc' | 'price_desc' | 'vram_desc' | 'time_spy_desc' | 'length_asc' | 'length_desc')}
                 className="bg-slate-900 border border-slate-800 text-white rounded-lg px-2.5 py-1 focus:outline-none focus:border-cyan-500"
               >
                 <option value="fit_score">Best Fit Score</option>
-                <option value="vram_desc">High VRAM (Highest First)</option>
+                <option value="price_perf_desc">⚡ Price to Performance (Value Terbaik)</option>
+                <option value="price_asc">🏷️ Harga Rp (Terendah Pertama)</option>
+                <option value="price_desc">💎 Harga Rp (Tertinggi Pertama)</option>
                 <option value="time_spy_desc">3DMark Score (Highest First)</option>
+                <option value="vram_desc">High VRAM (Highest First)</option>
                 <option value="length_asc">Length (Shortest First)</option>
                 <option value="length_desc">Length (Longest First)</option>
               </select>
@@ -558,8 +669,10 @@ export default function Home() {
               visualizerGpuId={visualizerGpu?.id || ''}
               showVisualizer={showVisualizer}
               onSelectForVisualizer={handleSelectGpuForVisualizer}
-              comparedGpus={comparedGpus}
+              comparedGpus={comparedGpusWithPrices}
               onToggleCompare={handleToggleCompare}
+              onOpenSetPrice={handleOpenSetPrice}
+              onDeletePrice={handleDeletePrice}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -572,6 +685,8 @@ export default function Home() {
                   onSelectForVisualizer={handleSelectGpuForVisualizer}
                   isCompared={comparedGpus.some((g) => g.id === gpu.id)}
                   onToggleCompare={handleToggleCompare}
+                  onOpenSetPrice={handleOpenSetPrice}
+                  onDeletePrice={handleDeletePrice}
                 />
               ))}
             </div>
@@ -635,6 +750,7 @@ export default function Home() {
       />
 
       <EditGPUModal
+        key={gpuToEdit ? `edit-gpu-${gpuToEdit.id}` : 'modal-edit-gpu'}
         isOpen={isEditGpuModalOpen}
         gpuToEdit={gpuToEdit}
         onClose={() => {
@@ -656,6 +772,7 @@ export default function Home() {
       />
 
       <EditCaseModal
+        key={caseToEdit ? `edit-case-${caseToEdit.id}` : 'modal-edit-case'}
         isOpen={isEditCaseModalOpen}
         caseToEdit={caseToEdit}
         onClose={() => {
@@ -668,9 +785,21 @@ export default function Home() {
       <GPUCompareModal
         isOpen={isCompareModalOpen}
         onClose={() => setIsCompareModalOpen(false)}
-        comparedGpus={comparedGpus}
+        comparedGpus={comparedGpusWithPrices}
         pcCase={activeCase}
         onRemoveFromCompare={(id) => setComparedGpus(comparedGpus.filter((g) => g.id !== id))}
+      />
+
+      <SetPriceModal
+        key={gpuForPrice ? `set-price-${gpuForPrice.id}` : 'modal-set-price'}
+        isOpen={isSetPriceModalOpen}
+        onClose={() => {
+          setIsSetPriceModalOpen(false);
+          setGpuForPrice(null);
+        }}
+        gpu={gpuForPrice}
+        currentPriceIdr={gpuForPrice ? (gpuPrices[gpuForPrice.id] ?? gpuForPrice.priceIdr) : undefined}
+        onSavePrice={handleSavePrice}
       />
 
       <AddGPUModal

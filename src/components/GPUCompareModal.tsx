@@ -3,6 +3,9 @@
 import React from 'react';
 import { CaseSpec, GPUSpec } from '@/types';
 import { evaluateClearance } from '@/utils/clearanceCalculator';
+import { TrendingUp } from 'lucide-react';
+
+import { formatPowerConnector } from '@/utils/powerConnector';
 
 interface GPUCompareModalProps {
   isOpen: boolean;
@@ -27,6 +30,13 @@ export const GPUCompareModal: React.FC<GPUCompareModalProps> = ({
   const maxClearanceMargin = Math.max(...comparedGpus.map((g) => evaluateClearance(g, pcCase).lengthMarginMm));
   const minTdpWatts = Math.min(...comparedGpus.map((g) => parseInt(g.tdpWatts, 10) || 999));
 
+  // Compute P/P ratios
+  const ppRatios = comparedGpus.map((g) => {
+    const priceM = g.priceIdr ? g.priceIdr / 1_000_000 : 0;
+    return priceM > 0 ? g.timeSpyScore / priceM : 0;
+  });
+  const maxPpRatio = Math.max(...ppRatios);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md animate-fadeIn">
       <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
@@ -36,7 +46,7 @@ export const GPUCompareModal: React.FC<GPUCompareModalProps> = ({
             <h3 className="text-base sm:text-lg font-bold text-white flex flex-wrap items-center gap-2">
               <span>Hardware &amp; Fitment Comparison Matrix</span>
               <span className="text-[11px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono font-bold">
-                🟢 Green = Better Spec
+                🟢 Green = Better Spec / Value
               </span>
             </h3>
             <p className="text-xs text-slate-400 font-mono mt-0.5">
@@ -61,10 +71,14 @@ export const GPUCompareModal: React.FC<GPUCompareModalProps> = ({
               const vramGb = parseInt(gpu.memorySize, 10) || 0;
               const tdpW = parseInt(gpu.tdpWatts, 10) || 0;
 
+              const priceM = gpu.priceIdr ? gpu.priceIdr / 1_000_000 : 0;
+              const ppRatio = priceM > 0 ? gpu.timeSpyScore / priceM : 0;
+
               const isHighestPerf = comparedGpus.length > 1 && gpu.timeSpyScore === maxTimeSpy;
               const isBestFit = comparedGpus.length > 1 && clearance.lengthMarginMm === maxClearanceMargin;
               const isHighestVram = comparedGpus.length > 1 && vramGb === maxVram && maxVram > 0;
               const isLowestPower = comparedGpus.length > 1 && tdpW === minTdpWatts && minTdpWatts < 999;
+              const isBestValue = comparedGpus.length > 1 && ppRatio === maxPpRatio && maxPpRatio > 0;
 
               return (
                 <div
@@ -106,6 +120,35 @@ export const GPUCompareModal: React.FC<GPUCompareModalProps> = ({
                     {/* Hardware Specs Breakdown with Green Winner Highlights */}
                     <div className="space-y-2.5 text-xs font-mono border-t border-b border-slate-800/80 py-3 text-slate-300 flex-1 flex flex-col justify-between">
                       
+                      {/* Price & Price to Performance */}
+                      <div
+                        className={`p-2.5 rounded-lg transition-all min-h-16 flex flex-col justify-between ${
+                          isBestValue
+                            ? 'bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-bold'
+                            : 'bg-slate-900/60 border border-slate-800 text-slate-300'
+                        }`}
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="text-[11px] text-slate-400">Harga &amp; P/P Ratio:</span>
+                          {isBestValue && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
+                              ✓ Best Value
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-white font-bold">
+                            {gpu.priceIdr ? `Rp ${gpu.priceIdr.toLocaleString('id-ID')}` : 'Belum diatur'}
+                          </span>
+                          {ppRatio > 0 && (
+                            <span className="text-emerald-400 font-extrabold flex items-center gap-1 text-xs">
+                              <TrendingUp className="w-3 h-3" />
+                              {Math.round(ppRatio).toLocaleString('id-ID')} pts/1jt
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
                       {/* 1. 3DMark Time Spy Benchmark */}
                       <div
                         className={`p-2.5 rounded-lg transition-all min-h-14.5 flex flex-col justify-between ${
@@ -174,7 +217,7 @@ export const GPUCompareModal: React.FC<GPUCompareModalProps> = ({
                             </span>
                           )}
                         </div>
-                        <div className="text-amber-400 font-bold">{gpu.powerConnector}</div>
+                        <div className="text-amber-400 font-bold">{formatPowerConnector(gpu.powerConnector)}</div>
                         <div className="text-[11px] text-slate-400">
                           TDP <strong className={isLowestPower ? 'text-emerald-300 font-bold' : 'text-rose-400'}>{gpu.tdpWatts}</strong> &bull; Min PSU <strong className="text-white">{gpu.recommendedPsuW}W</strong>
                         </div>

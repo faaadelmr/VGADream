@@ -48,7 +48,7 @@ const POWER_CONNECTOR_OPTIONS = [
   '1x 6-pin',
   '2x 6-pin',
   '1x 8-pin + 1x 6-pin',
-  'Motherboard Slot Only (No Pin)'
+  'No Pin'
 ];
 const RECOMMENDED_PSU_OPTIONS = [300, 350, 450, 500, 550, 600, 650, 700, 750, 850, 1000, 1200, 1500];
 
@@ -727,7 +727,7 @@ export const AddGPUModal: React.FC<AddGPUModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs shadow-md disabled:opacity-50"
+              className="px-5 py-2 rounded-xl bg-linear-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs shadow-md disabled:opacity-50"
             >
               {isSubmitting ? 'Saving...' : 'Save to Master Catalog'}
             </button>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { GPUSpec } from '@/types';
 
 interface EditGPUModalProps {
@@ -49,7 +49,7 @@ const POWER_CONNECTOR_OPTIONS = [
   '1x 6-pin',
   '2x 6-pin',
   '1x 8-pin + 1x 6-pin',
-  'Motherboard Slot Only (No Pin)'
+  'No Pin'
 ];
 const RECOMMENDED_PSU_OPTIONS = [300, 350, 450, 500, 550, 600, 650, 700, 750, 850, 1000, 1200, 1500];
 
@@ -73,21 +73,15 @@ export const EditGPUModal: React.FC<EditGPUModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
-  const [formData, setFormData] = useState<Partial<GPUSpec>>({});
+  const [formData, setFormData] = useState<Partial<GPUSpec>>(() =>
+    gpuToEdit ? { ...gpuToEdit } : {}
+  );
 
   // Dynamic Port Items list
   const [portItems, setPortItems] = useState<PortItem[]>([
     { id: 'p1', count: 3, type: 'DisplayPort 1.4a' },
     { id: 'p2', count: 1, type: 'HDMI 2.1a' }
   ]);
-
-  useEffect(() => {
-    if (gpuToEdit) {
-      setFormData({ ...gpuToEdit });
-      setErrorMessage('');
-      setSuccessMessage('');
-    }
-  }, [gpuToEdit]);
 
   if (!isOpen || !gpuToEdit) return null;
 
@@ -620,7 +614,7 @@ export const EditGPUModal: React.FC<EditGPUModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-bold text-xs shadow-md disabled:opacity-50"
+              className="px-5 py-2 rounded-xl bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-bold text-xs shadow-md disabled:opacity-50"
             >
               {isSubmitting ? 'Saving...' : 'Save Edit GPU Spec'}
             </button>

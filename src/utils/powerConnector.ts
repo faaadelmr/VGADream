@@ -16,22 +16,30 @@ export interface PowerConnectorSpec {
 export function parsePowerConnectors(connector: string): PowerConnectorSpec {
   if (!connector) {
     return {
-      items: [{ type: '8-pin', cols: 4, hasSense: false, pinCount: 8 }],
-      count: 1,
-      totalPins: 8,
-      label: '8-pin'
+      items: [],
+      count: 0,
+      totalPins: 0,
+      label: 'No Pin'
     };
   }
 
   const norm = connector.replace(/\s+/g, '').toLowerCase();
 
-  // Check if GPU requires NO external power pin (PCIe Slot Only)
-  if (norm.includes('pcieslot') || norm.includes('nopin') || norm.includes('slotonly') || norm.includes('nopowerpin') || norm.includes('none')) {
+  // Check if GPU requires NO external power pin (PCIe / Motherboard Slot Only)
+  if (
+    norm.includes('pcieslot') ||
+    norm.includes('motherboard') ||
+    norm.includes('nopin') ||
+    norm.includes('slotonly') ||
+    norm.includes('nopowerpin') ||
+    norm.includes('none') ||
+    norm === 'no'
+  ) {
     return {
       items: [],
       count: 0,
       totalPins: 0,
-      label: 'PCIe Slot Only (No Pin)'
+      label: 'No Pin'
     };
   }
 
@@ -80,7 +88,7 @@ export function parsePowerConnectors(connector: string): PowerConnectorSpec {
     items,
     count: items.length,
     totalPins,
-    label: connector
+    label: totalPins === 0 ? 'No Pin' : connector
   };
 }
 
@@ -88,3 +96,8 @@ export function getPinCount(connector: string): number {
   return parsePowerConnectors(connector).totalPins;
 }
 
+export function formatPowerConnector(connector: string): string {
+  const parsed = parsePowerConnectors(connector);
+  if (parsed.totalPins === 0) return 'No Pin';
+  return connector || 'No Pin';
+}

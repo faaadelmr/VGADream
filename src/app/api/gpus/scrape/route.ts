@@ -85,7 +85,7 @@ const TECHPOWERUP_SPEC_DATABASE: Record<string, Partial<GPUSpec>> = {
     heightMm: 111,
     thicknessMm: 37,
     slotThickness: 2.0,
-    powerConnector: 'Motherboard Slot Only (No Pin)',
+    powerConnector: '(No Pin)',
     recommendedPsuW: 300,
     weightGrams: 450,
     isSffFriendly: true,

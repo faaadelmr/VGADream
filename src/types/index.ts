@@ -38,6 +38,7 @@ export interface GPUSpec {
   imageUrl?: string;
   accentColor?: string;
   description: string;
+  priceIdr?: number; // User custom price in IDR (Rupiah)
 }
 
 export type CaseFormFactor = 'SFF / ITX' | 'Micro-ATX' | 'Mid-Tower' | 'Full-Tower';
