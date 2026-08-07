@@ -167,5 +167,35 @@ export const INITIAL_CASES: CaseSpec[] = [
     supportsFrontRadiator: true,
     maxCpuCoolerHeightMm: 170,
     notes: 'Standard mid-tower benchmark case. Max GPU 360mm.'
+  },
+  {
+    id: 'corsair-3000d-airflow',
+    name: 'Corsair 3000D AIRFLOW',
+    brand: 'Corsair',
+    formFactor: 'Mid-Tower',
+    volumeLiters: 41.5,
+    maxGpuLengthMm: 360,
+    maxGpuHeightMm: 170,
+    maxGpuSlotThickness: 4.0,
+    maxGpuThicknessMm: 80,
+    supportsVerticalMount: false,
+    supportsFrontRadiator: true,
+    maxCpuCoolerHeightMm: 170,
+    notes: 'High airflow compact Mid-Tower ATX. Supports up to 360mm GPU & 170mm CPU cooler.'
+  },
+  {
+    id: 'jonsbo-n3',
+    name: 'Jonsbo N3 NAS Chassis',
+    brand: 'Jonsbo',
+    formFactor: 'SFF / ITX',
+    volumeLiters: 18.3,
+    maxGpuLengthMm: 250,
+    maxGpuHeightMm: 130,
+    maxGpuSlotThickness: 2.0,
+    maxGpuThicknessMm: 40,
+    supportsVerticalMount: false,
+    supportsFrontRadiator: false,
+    maxCpuCoolerHeightMm: 45,
+    notes: '8-bay 3.5" HDD NAS ITX chassis. Max GPU Length 250mm, 2-Slot, CPU Cooler 45mm.'
   }
 ];

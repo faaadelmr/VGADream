@@ -15,6 +15,8 @@ import { GPUCompareModal } from '@/components/GPUCompareModal';
 import { MasterCatalogModal } from '@/components/MasterCatalogModal';
 import { AddGPUModal } from '@/components/AddGPUModal';
 import { EditGPUModal } from '@/components/EditGPUModal';
+import { AddCaseModal } from '@/components/AddCaseModal';
+import { EditCaseModal } from '@/components/EditCaseModal';
 import { Database, Loader2, Plus, RefreshCw, Layers, Sparkles } from 'lucide-react';
 
 export default function Home() {
@@ -45,8 +47,10 @@ export default function Home() {
   const [selectedManufacturers, setSelectedManufacturers] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<'fit_score' | 'vram_desc' | 'time_spy_desc' | 'length_asc' | 'length_desc'>('fit_score');
 
-  // 4. Modals & Compare
   const [isCaseModalOpen, setIsCaseModalOpen] = useState(false);
+  const [isAddCaseModalOpen, setIsAddCaseModalOpen] = useState(false);
+  const [isEditCaseModalOpen, setIsEditCaseModalOpen] = useState(false);
+  const [caseToEdit, setCaseToEdit] = useState<CaseSpec | null>(null);
   const [isCompareModalOpen, setIsCompareModalOpen] = useState(false);
   const [isAddGpuModalOpen, setIsAddGpuModalOpen] = useState(false);
   const [isEditGpuModalOpen, setIsEditGpuModalOpen] = useState(false);
@@ -72,7 +76,115 @@ export default function Home() {
     }
   }, []);
 
-  // Helper to update & persist Dream VGA List
+  const [allCases, setAllCases] = useState<CaseSpec[]>(INITIAL_CASES);
+
+  // Helper to fetch cases from database API + localStorage
+  const fetchCasesFromD1 = async () => {
+    try {
+      const res = await fetch('/api/cases');
+      const data = await res.json();
+      const apiCases: CaseSpec[] = data.cases || [];
+
+      const saved = localStorage.getItem('vgadream_custom_cases');
+      const custom: CaseSpec[] = saved ? JSON.parse(saved) : [];
+      const deletedSaved = localStorage.getItem('vgadream_deleted_case_ids');
+      const deletedIds: string[] = deletedSaved ? JSON.parse(deletedSaved) : [];
+      const deletedSet = new Set(deletedIds);
+
+      const caseMap = new Map<string, CaseSpec>();
+      INITIAL_CASES.forEach((c) => caseMap.set(c.id, c));
+      apiCases.forEach((c) => caseMap.set(c.id, c));
+      custom.forEach((c) => caseMap.set(c.id, c));
+
+      const merged = Array.from(caseMap.values()).filter((c) => !deletedSet.has(c.id));
+      setAllCases(merged);
+    } catch (err) {
+      console.warn('Failed to fetch cases from API:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchCasesFromD1();
+  }, []);
+
+  // Case Edit & Delete Handlers
+  const handleEditCase = (pcCase: CaseSpec) => {
+    setCaseToEdit(pcCase);
+    setIsEditCaseModalOpen(true);
+  };
+
+  const handleCaseUpdated = (updatedCase: CaseSpec) => {
+    if (activeCase.id === updatedCase.id) {
+      setActiveCase(updatedCase);
+    }
+
+    // 1. Update local state instantly (no refresh needed)
+    setAllCases((prev) => prev.map((c) => (c.id === updatedCase.id ? updatedCase : c)));
+
+    // 2. Persist to localStorage
+    try {
+      const saved = localStorage.getItem('vgadream_custom_cases');
+      const list: CaseSpec[] = saved ? JSON.parse(saved) : [];
+      const updatedList = list.map((c) => (c.id === updatedCase.id ? updatedCase : c));
+      if (!updatedList.some((c) => c.id === updatedCase.id)) {
+        updatedList.unshift(updatedCase);
+      }
+      localStorage.setItem('vgadream_custom_cases', JSON.stringify(updatedList));
+    } catch (e) {
+      console.error(e);
+    }
+
+    // 3. Post to SQL database endpoint
+    fetch('/api/cases/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedCase)
+    }).catch((err) => console.warn('Database case update failed:', err));
+  };
+
+  const handleDeleteCase = async (caseId: string) => {
+    // 1. Update local state instantly (card disappears in real time)
+    setAllCases((prev) => prev.filter((c) => c.id !== caseId));
+
+    // 2. Persist deletion tracking in localStorage
+    try {
+      const saved = localStorage.getItem('vgadream_custom_cases');
+      const list: CaseSpec[] = saved ? JSON.parse(saved) : [];
+      const filtered = list.filter((c) => c.id !== caseId);
+      localStorage.setItem('vgadream_custom_cases', JSON.stringify(filtered));
+
+      const deletedSaved = localStorage.getItem('vgadream_deleted_case_ids');
+      const deletedList: string[] = deletedSaved ? JSON.parse(deletedSaved) : [];
+      if (!deletedList.includes(caseId)) {
+        deletedList.push(caseId);
+      }
+      localStorage.setItem('vgadream_deleted_case_ids', JSON.stringify(deletedList));
+    } catch (e) {
+      console.error(e);
+    }
+
+    // 3. Execute DELETE FROM cases SQL command in D1 database
+    try {
+      await fetch(`/api/cases/delete?id=${encodeURIComponent(caseId)}`, {
+        method: 'DELETE'
+      });
+    } catch (err) {
+      console.warn('Database case deletion failed:', err);
+    }
+
+    if (activeCase.id === caseId) {
+      try {
+        const deletedSaved = localStorage.getItem('vgadream_deleted_case_ids');
+        const deletedList: string[] = deletedSaved ? JSON.parse(deletedSaved) : [];
+        const fallbackCase = INITIAL_CASES.find((c) => !deletedList.includes(c.id)) || INITIAL_CASES[0];
+        setActiveCase(fallbackCase);
+      } catch {
+        setActiveCase(INITIAL_CASES[0]);
+      }
+    }
+  };
+
+  // Helper to add GPU to Dream VGA List
   const updateDreamGpus = (newList: GPUSpec[]) => {
     setDreamGpus(newList);
     try {
@@ -253,14 +365,8 @@ export default function Home() {
       <Navbar
         pcCase={activeCase}
         onChangeCaseClick={() => setIsCaseModalOpen(true)}
-        comparedCount={comparedGpus.length}
-        onOpenCompareClick={() => setIsCompareModalOpen(true)}
         onOpenMasterCatalog={() => setIsMasterCatalogModalOpen(true)}
         dreamCount={dreamGpus.length}
-        masterCount={masterGpus.length}
-        onOpenAddGpu={() => setIsAddGpuModalOpen(true)}
-        onSyncD1={fetchGpusFromD1}
-        isSyncing={isLoading}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 flex-1 w-full">
@@ -543,6 +649,20 @@ export default function Home() {
         onClose={() => setIsCaseModalOpen(false)}
         selectedCase={activeCase}
         onSelectCase={setActiveCase}
+        onOpenAddCaseModal={() => setIsAddCaseModalOpen(true)}
+        onEditCase={handleEditCase}
+        onDeleteCase={handleDeleteCase}
+        allCasesOverride={allCases}
+      />
+
+      <EditCaseModal
+        isOpen={isEditCaseModalOpen}
+        caseToEdit={caseToEdit}
+        onClose={() => {
+          setIsEditCaseModalOpen(false);
+          setCaseToEdit(null);
+        }}
+        onCaseUpdated={handleCaseUpdated}
       />
 
       <GPUCompareModal
@@ -557,6 +677,16 @@ export default function Home() {
         isOpen={isAddGpuModalOpen}
         onClose={() => setIsAddGpuModalOpen(false)}
         onGpuAdded={fetchGpusFromD1}
+      />
+
+      <AddCaseModal
+        isOpen={isAddCaseModalOpen}
+        onClose={() => setIsAddCaseModalOpen(false)}
+        onCaseAdded={(newCase) => {
+          setActiveCase(newCase);
+          setAllCases((prev) => [newCase, ...prev.filter((c) => c.id !== newCase.id)]);
+          fetchCasesFromD1();
+        }}
       />
 
       <Footer />

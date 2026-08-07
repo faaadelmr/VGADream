@@ -254,11 +254,14 @@ export const AddGPUModal: React.FC<AddGPUModalProps> = ({
 
         {/* 1. Scraper Section */}
         <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-          <label className="block text-xs font-bold text-cyan-400">Auto-Fetch GPU Specifications</label>
+          <div className="flex items-center justify-between text-xs font-bold text-cyan-400">
+            <span>Auto-Fetch Engine</span>
+            <span className="text-[10px] text-cyan-400/80 font-mono">Nama GPU</span>
+          </div>
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="Enter GPU model (e.g., RTX 4070 Ti Super, RX 7800 XT, GTX 1050 Ti)..."
+              placeholder="Cari nama GPU (misal: RTX 4070 Ti Super, RX 7800 XT, GTX 1050 Ti)..."
               value={scrapeQuery}
               onChange={(e) => setScrapeQuery(e.target.value)}
               onKeyDown={(e) => {
@@ -275,7 +278,7 @@ export const AddGPUModal: React.FC<AddGPUModalProps> = ({
               disabled={isScraping}
               className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold transition-all disabled:opacity-50 shrink-0"
             >
-              {isScraping ? 'Fetching...' : 'Fetch Spec'}
+              {isScraping ? 'Fetching Specs...' : 'Import Specs'}
             </button>
           </div>
         </div>

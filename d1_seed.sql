@@ -1,4 +1,6 @@
--- Cloudflare D1 SQL Schema & Initial Seed Data for GPU Specifications Database
+-- Cloudflare D1 SQL Schema & Initial Seed Data for VGADream Database
+
+-- 1. TABLE: gpus
 CREATE TABLE IF NOT EXISTS gpus (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -36,7 +38,31 @@ CREATE INDEX IF NOT EXISTS idx_gpus_manufacturer ON gpus(manufacturer);
 CREATE INDEX IF NOT EXISTS idx_gpus_chipset ON gpus(chipset);
 CREATE INDEX IF NOT EXISTS idx_gpus_dimensions ON gpus(length_mm, slot_thickness);
 
--- INITIAL SEED DATA --
+
+-- 2. TABLE: cases
+CREATE TABLE IF NOT EXISTS cases (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    brand TEXT NOT NULL,
+    form_factor TEXT NOT NULL,
+    volume_liters REAL,
+    max_gpu_length_mm REAL NOT NULL,
+    max_gpu_height_mm REAL NOT NULL,
+    max_gpu_slot_thickness REAL NOT NULL,
+    max_gpu_thickness_mm REAL NOT NULL,
+    supports_vertical_mount INTEGER NOT NULL DEFAULT 0,
+    supports_front_radiator INTEGER NOT NULL DEFAULT 0,
+    max_cpu_cooler_height_mm REAL NOT NULL,
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_cases_brand ON cases(brand);
+CREATE INDEX IF NOT EXISTS idx_cases_form_factor ON cases(form_factor);
+CREATE INDEX IF NOT EXISTS idx_cases_gpu_length ON cases(max_gpu_length_mm);
+
+
+-- INITIAL SEED DATA FOR GPUS --
 INSERT INTO gpus (
     id, name, brand, chipset, manufacturer, gpu_chip, process_size, cores,
     memory_size, memory_type, bus_width, bandwidth, boost_clock, tdp_watts,
@@ -76,3 +102,74 @@ INSERT INTO gpus (
     name=excluded.name,
     time_spy_score=excluded.time_spy_score,
     length_mm=excluded.length_mm;
+
+
+-- INITIAL SEED DATA FOR CASES --
+INSERT INTO cases (
+    id, name, brand, form_factor, volume_liters, max_gpu_length_mm,
+    max_gpu_height_mm, max_gpu_slot_thickness, max_gpu_thickness_mm,
+    supports_vertical_mount, supports_front_radiator, max_cpu_cooler_height_mm, notes
+) VALUES
+(
+    'fractal-terra',
+    'Fractal Design Terra',
+    'Fractal Design',
+    'SFF / ITX',
+    10.4,
+    322,
+    145,
+    3.6,
+    72,
+    0,
+    0,
+    77,
+    'Stepless adjustable central spine layout. Supports up to 322mm length and 72mm slot thickness.'
+),
+(
+    'jonsbo-n3',
+    'Jonsbo N3 NAS Chassis',
+    'Jonsbo',
+    'SFF / ITX',
+    18.3,
+    250,
+    130,
+    2.0,
+    40,
+    0,
+    0,
+    45,
+    '8-bay 3.5" HDD NAS ITX chassis. Max GPU Length 250mm, 2-Slot, CPU Cooler 45mm.'
+),
+(
+    'formd-t1',
+    'FormD T1 v2.1',
+    'FormD',
+    'SFF / ITX',
+    9.95,
+    325,
+    140,
+    3.25,
+    65,
+    0,
+    0,
+    73,
+    'Premium SFF sandwich layout fitting up to 3.25-slot 325mm GPUs.'
+),
+(
+    'lianli-a3',
+    'Lian Li A3-mATX',
+    'LIAN LI',
+    'Micro-ATX',
+    26.3,
+    415,
+    160,
+    4.0,
+    85,
+    0,
+    1,
+    165,
+    'Compact mATX mesh case. Supports massive 415mm GPUs.'
+)
+ON CONFLICT(id) DO UPDATE SET
+    name=excluded.name,
+    max_gpu_length_mm=excluded.max_gpu_length_mm;
