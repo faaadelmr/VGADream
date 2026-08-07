@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { CaseSpec, ClearanceResult, GPUSpec } from '@/types';
 import { parsePowerConnectors, PowerSocketItem } from '@/utils/powerConnector';
 import { parseDisplayOutputs } from '@/utils/displayOutputs';
-import { Cpu, Fan, Zap, Maximize2, Layers, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Cpu, Zap, Maximize2, Layers } from 'lucide-react';
 
 interface GPUFitVisualizer2DProps {
   gpu: GPUSpec;
@@ -79,7 +79,6 @@ export const GPUFitVisualizer2D: React.FC<GPUFitVisualizer2DProps> = ({
   const gpuLengthPx = gpu.lengthMm * mmToPx;
   const caseLengthPx = pcCase.maxGpuLengthMm * mmToPx;
   const marginMm = clearance.lengthMarginMm;
-  const marginPx = Math.abs(marginMm) * mmToPx;
 
   // PCIe connector positioning
   const pcieSlotWidthPx = Math.min(gpuLengthPx * 0.7, 89 * mmToPx * pcieSpec.lengthRatio);
@@ -186,7 +185,7 @@ export const GPUFitVisualizer2D: React.FC<GPUFitVisualizer2DProps> = ({
       </div>
 
       {/* Main 2D Schematic Canvas Surface */}
-      <div className="relative rounded-2xl bg-gradient-to-b from-slate-950 via-slate-900/90 to-slate-950 border border-slate-800/80 p-4 sm:p-6 overflow-hidden">
+      <div className="relative rounded-2xl bg-linear-to-b from-slate-950 via-slate-900/90 to-slate-950 border border-slate-800/80 p-4 sm:p-6 overflow-hidden">
         {/* Main 2D Blueprint Canvas Surface */}
 
         <div className="relative z-10 space-y-8">

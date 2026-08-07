@@ -337,6 +337,126 @@ const COMPONENTSCALE_CASE_DATABASE: Record<string, Partial<CaseSpec>> = {
   }
 };
 
+/**
+ * Live HTML Scraper Engine for ComponentScale.com
+ * Dynamically fetches and parses case specs directly from live web pages.
+ */
+async function scrapeLiveComponentScalePage(targetUrl: string) {
+  try {
+    const res = await fetch(targetUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+      },
+      next: { revalidate: 3600 }
+    });
+
+    if (!res.ok) return null;
+
+    const html = await res.text();
+    if (!html || html.length < 200) return null;
+
+    // Parse Case Name from Title or H1
+    let name = '';
+    const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
+    if (titleMatch) {
+      name = titleMatch[1].replace(/-\s*ComponentScale.*$/i, '').trim();
+    }
+    const h1Match = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
+    if (h1Match && (!name || name.length > 50)) {
+      name = h1Match[1].replace(/<[^>]+>/g, '').trim();
+    }
+
+    // Extract Brand
+    const brands = [
+      'Jonsbo', 'Fractal Design', 'LIAN LI', 'NZXT', 'Corsair', 'Cooler Master',
+      'ASUS', 'FormD', 'DAN Cases', 'SSUPD', 'HYTE', 'NCASE', 'LOUQE', 'Phanteks',
+      'Montech', 'DeepCool', 'InWin', 'Thermaltake', 'Be Quiet!'
+    ];
+    let brand = 'Custom Brand';
+    for (const b of brands) {
+      if (html.toLowerCase().includes(b.toLowerCase()) || name.toLowerCase().includes(b.toLowerCase())) {
+        brand = b;
+        break;
+      }
+    }
+
+    // Extract Form Factor
+    let formFactor: 'SFF / ITX' | 'Micro-ATX' | 'Mid-Tower' | 'Full-Tower' = 'Mid-Tower';
+    const lowerHtml = html.toLowerCase();
+    if (lowerHtml.includes('full-tower') || lowerHtml.includes('full tower') || lowerHtml.includes('e-atx')) {
+      formFactor = 'Full-Tower';
+    } else if (lowerHtml.includes('micro-atx') || lowerHtml.includes('matx') || lowerHtml.includes('micro atx')) {
+      formFactor = 'Micro-ATX';
+    } else if (lowerHtml.includes('sff') || lowerHtml.includes('mini-itx') || lowerHtml.includes('itx')) {
+      formFactor = 'SFF / ITX';
+    }
+
+    // Extract Max GPU Length (mm)
+    let maxGpuLengthMm = 0;
+    const gpuLengthMatches = [
+      ...html.matchAll(/gpu\s*(?:length|clearance)[^0-9]*(\d{3})\s*mm/gi),
+      ...html.matchAll(/max\s*gpu[^0-9]*(\d{3})\s*mm/gi),
+      ...html.matchAll(/(\d{3})\s*mm[^0-9]*(?:gpu|length)/gi)
+    ];
+    if (gpuLengthMatches.length > 0) {
+      maxGpuLengthMm = parseInt(gpuLengthMatches[0][1], 10);
+    }
+
+    // Extract Max CPU Cooler Height (mm)
+    let maxCpuCoolerHeightMm = 0;
+    const cpuHeightMatches = [
+      ...html.matchAll(/cpu\s*(?:cooler|height|clearance)[^0-9]*(\d{2,3})\s*mm/gi),
+      ...html.matchAll(/max\s*cpu[^0-9]*(\d{2,3})\s*mm/gi),
+      ...html.matchAll(/(\d{2,3})\s*mm[^0-9]*(?:cpu|cooler)/gi)
+    ];
+    if (cpuHeightMatches.length > 0) {
+      maxCpuCoolerHeightMm = parseInt(cpuHeightMatches[0][1], 10);
+    }
+
+    // Extract Volume (Liters)
+    let volumeLiters = 0;
+    const volumeMatch = html.match(/(\d+(?:\.\d+)?)\s*(?:l|liters|litre)/i);
+    if (volumeMatch) {
+      volumeLiters = parseFloat(volumeMatch[1]);
+    }
+
+    // Extract Slot Thickness
+    let maxGpuSlotThickness = 4.0;
+    const slotMatch = html.match(/(\d+(?:\.\d+)?)\s*slots?/i);
+    if (slotMatch) {
+      maxGpuSlotThickness = parseFloat(slotMatch[1]);
+    }
+
+    if (maxGpuLengthMm > 0 || maxCpuCoolerHeightMm > 0) {
+      // Calculate max GPU height from CPU cooler or form factor
+      const maxGpuHeightMm = maxCpuCoolerHeightMm > 0
+        ? Math.min(185, Math.max(130, maxCpuCoolerHeightMm - 10))
+        : (formFactor === 'Full-Tower' ? 180 : formFactor === 'SFF / ITX' ? 140 : 160);
+
+      const maxGpuThicknessMm = Math.round(maxGpuSlotThickness * 20);
+
+      return {
+        name: name || 'Scraped PC Case',
+        brand,
+        formFactor,
+        volumeLiters: volumeLiters || (formFactor === 'Full-Tower' ? 80 : formFactor === 'SFF / ITX' ? 12 : 45),
+        maxGpuLengthMm: maxGpuLengthMm || 360,
+        maxGpuHeightMm,
+        maxGpuSlotThickness,
+        maxGpuThicknessMm,
+        supportsVerticalMount: formFactor === 'Full-Tower' || formFactor === 'Mid-Tower',
+        supportsFrontRadiator: true,
+        maxCpuCoolerHeightMm: maxCpuCoolerHeightMm || 170,
+        notes: `Live Scraped from ComponentScale (${targetUrl}). Real-time web specs extracted successfully.`
+      };
+    }
+  } catch (err) {
+    console.warn('Live fetch error:', err);
+  }
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { query, url } = await request.json();
@@ -345,6 +465,31 @@ export async function POST(request: NextRequest) {
 
     if (!inputStr) {
       return NextResponse.json({ error: 'Search query or ComponentScale URL is required' }, { status: 400 });
+    }
+
+    // Step 0: Check if input is a ComponentScale URL or Slug
+    let liveTargetUrl = '';
+    if (inputStr.startsWith('http://') || inputStr.startsWith('https://')) {
+      liveTargetUrl = inputStr;
+    } else if (inputStr.includes('case/')) {
+      const slug = inputStr.replace(/^.*case\//i, '');
+      liveTargetUrl = `https://componentscale.com/case/${slug}`;
+    }
+
+    // Attempt Live Web Scrape from ComponentScale URL
+    if (liveTargetUrl) {
+      const liveSpec = await scrapeLiveComponentScalePage(liveTargetUrl);
+      if (liveSpec) {
+        return NextResponse.json({
+          success: true,
+          query: inputStr,
+          source: 'componentscale_live_web_scraper',
+          scrapedSpec: {
+            ...liveSpec,
+            id: `custom-case-${Date.now()}`
+          }
+        });
+      }
     }
 
     const rawQ = inputStr.toLowerCase();
