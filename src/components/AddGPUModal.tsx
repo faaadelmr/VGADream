@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GPUSpec } from '@/types';
 
 interface AddGPUModalProps {
@@ -15,7 +15,37 @@ interface PortItem {
   type: string;
 }
 
-const VRAM_SIZE_OPTIONS = ['1 GB', '2 GB', '4 GB', '6 GB', '8 GB', '10 GB', '12 GB', '16 GB', '20 GB', '24 GB', '32 GB', '48 GB'];
+const INITIAL_GPU_FORM: Partial<GPUSpec> = {
+  name: '',
+  brand: 'NVIDIA',
+  chipset: '',
+  manufacturer: '',
+  gpuChip: '',
+  processSize: '',
+  cores: '',
+  memorySize: '',
+  memoryType: 'GDDR6',
+  busWidth: '',
+  bandwidth: '',
+  boostClock: '',
+  tdpWatts: '',
+  busInterface: 'PCIe 4.0 x16',
+  displayOutputs: '',
+  timeSpyScore: undefined,
+  lengthMm: undefined,
+  heightMm: undefined,
+  thicknessMm: undefined,
+  slotThickness: undefined,
+  powerConnector: '1x 8-pin',
+  recommendedPsuW: undefined,
+  weightGrams: undefined,
+  isSffFriendly: false,
+  releaseYear: new Date().getFullYear(),
+  accentColor: '#3b82f6',
+  description: ''
+};
+
+const VRAM_SIZE_OPTIONS = ['1 GB', '2 GB', '3 GB', '4 GB', '6 GB', '8 GB', '10 GB', '12 GB', '16 GB', '20 GB', '24 GB', '32 GB', '48 GB'];
 const VRAM_TYPE_OPTIONS = [
   'GDDR7',
   'GDDR6X',
@@ -37,7 +67,7 @@ const VRAM_TYPE_OPTIONS = [
   'DDR4',
   'DDR3'
 ];
-const PCIE_BUS_OPTIONS = ['PCIe 5.0 x16', 'PCIe 4.0 x16', 'PCIe 4.0 x8', 'PCIe 3.0 x16', 'PCIe 3.0 x8'];
+const PCIE_BUS_OPTIONS = ['PCIe 5.0 x16', 'PCIe 4.0 x16', 'PCIe 4.0 x8', 'PCIe 3.0 x16', 'PCIe 3.0 x8', 'PCIe 3.0 x4'];
 const POWER_CONNECTOR_OPTIONS = [
   '1x 16-pin (12VHPWR)',
   '1x 12V-2x6',
@@ -75,41 +105,20 @@ export const AddGPUModal: React.FC<AddGPUModalProps> = ({
   const [successMessage, setSuccessMessage] = useState('');
 
   // Dynamic Port Items list
-  const [portItems, setPortItems] = useState<PortItem[]>([
-    { id: 'p1', count: 3, type: 'DisplayPort 1.4a' },
-    { id: 'p2', count: 1, type: 'HDMI 2.1a' }
-  ]);
+  const [portItems, setPortItems] = useState<PortItem[]>([]);
 
-  // Form State matching 100% 1-to-1 with Cloudflare D1 Database gpus table columns
-  const [formData, setFormData] = useState<Partial<GPUSpec>>({
-    name: '',
-    brand: 'NVIDIA',
-    chipset: '',
-    manufacturer: 'ASUS',
-    gpuChip: 'N/A',
-    processSize: '4 nm',
-    cores: 'N/A',
-    memorySize: '12 GB',
-    memoryType: 'GDDR6X',
-    busWidth: '192-bit',
-    bandwidth: '504 GB/s',
-    boostClock: '2500 MHz',
-    tdpWatts: '220W',
-    busInterface: 'PCIe 4.0 x16',
-    displayOutputs: '3x DisplayPort 1.4a, 1x HDMI 2.1a',
-    timeSpyScore: 18000,
-    lengthMm: 280,
-    heightMm: 125,
-    thicknessMm: 45,
-    slotThickness: 2.2,
-    powerConnector: '1x 8-pin',
-    recommendedPsuW: 650,
-    weightGrams: 1100,
-    isSffFriendly: false,
-    releaseYear: 2023,
-    accentColor: '#3b82f6',
-    description: ''
-  });
+  // Form State
+  const [formData, setFormData] = useState<Partial<GPUSpec>>(INITIAL_GPU_FORM);
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData(INITIAL_GPU_FORM);
+      setPortItems([]);
+      setScrapeQuery('');
+      setErrorMessage('');
+      setSuccessMessage('');
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

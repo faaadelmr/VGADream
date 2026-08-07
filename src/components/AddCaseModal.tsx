@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CaseSpec } from '@/types';
 import { generateCaseId } from '@/utils/caseUtils';
 import { X, Loader2 } from 'lucide-react';
@@ -39,6 +39,21 @@ const BRAND_OPTIONS = [
   'Custom Brand'
 ];
 
+const INITIAL_CASE_FORM: Partial<CaseSpec> = {
+  name: '',
+  brand: 'Fractal Design',
+  formFactor: 'SFF / ITX',
+  volumeLiters: undefined,
+  maxGpuLengthMm: undefined,
+  maxGpuHeightMm: undefined,
+  maxGpuSlotThickness: undefined,
+  maxGpuThicknessMm: undefined,
+  supportsVerticalMount: false,
+  supportsFrontRadiator: false,
+  maxCpuCoolerHeightMm: undefined,
+  notes: ''
+};
+
 export const AddCaseModal: React.FC<AddCaseModalProps> = ({
   isOpen,
   onClose,
@@ -51,20 +66,16 @@ export const AddCaseModal: React.FC<AddCaseModalProps> = ({
   const [successMessage, setSuccessMessage] = useState('');
 
   // Case Form State
-  const [formData, setFormData] = useState<Partial<CaseSpec>>({
-    name: '',
-    brand: 'Fractal Design',
-    formFactor: 'SFF / ITX',
-    volumeLiters: 10.4,
-    maxGpuLengthMm: 322,
-    maxGpuHeightMm: 145,
-    maxGpuSlotThickness: 3.6,
-    maxGpuThicknessMm: 72,
-    supportsVerticalMount: false,
-    supportsFrontRadiator: false,
-    maxCpuCoolerHeightMm: 77,
-    notes: ''
-  });
+  const [formData, setFormData] = useState<Partial<CaseSpec>>(INITIAL_CASE_FORM);
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData(INITIAL_CASE_FORM);
+      setScrapeQuery('');
+      setErrorMessage('');
+      setSuccessMessage('');
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

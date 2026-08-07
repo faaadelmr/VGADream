@@ -16,7 +16,7 @@ interface PortItem {
   type: string;
 }
 
-const VRAM_SIZE_OPTIONS = ['1 GB', '2 GB', '4 GB', '6 GB', '8 GB', '10 GB', '12 GB', '16 GB', '20 GB', '24 GB', '32 GB', '48 GB'];
+const VRAM_SIZE_OPTIONS = ['1 GB', '2 GB', '3 GB', '4 GB', '6 GB', '8 GB', '10 GB', '12 GB', '16 GB', '20 GB', '24 GB', '32 GB', '48 GB'];
 const VRAM_TYPE_OPTIONS = [
   'GDDR7',
   'GDDR6X',
@@ -38,7 +38,7 @@ const VRAM_TYPE_OPTIONS = [
   'DDR4',
   'DDR3'
 ];
-const PCIE_BUS_OPTIONS = ['PCIe 5.0 x16', 'PCIe 4.0 x16', 'PCIe 4.0 x8', 'PCIe 3.0 x16', 'PCIe 3.0 x8'];
+const PCIE_BUS_OPTIONS = ['PCIe 5.0 x16', 'PCIe 4.0 x16', 'PCIe 4.0 x8', 'PCIe 3.0 x16', 'PCIe 3.0 x8', 'PCIe 3.0 x4'];
 const POWER_CONNECTOR_OPTIONS = [
   '1x 16-pin (12VHPWR)',
   '1x 12V-2x6',
